@@ -18,7 +18,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.growspace.sdk.SpaceUwb
 //import com.growspace.sdk.GrowSpaceSDK
-import com.growspace.sdk.model.ScanRate
+//import com.growspace.sdk.model.ScanRate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -187,7 +187,10 @@ class MainActivity : ComponentActivity() {
         val permissions = arrayOf(
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.BLUETOOTH_ADVERTISE,
+            Manifest.permission.BLUETOOTH,
+            Manifest.permission.UWB_RANGING
         )
 
         if (permissions.any {
