@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var startScanButton: Button
     private lateinit var stopScanButton: Button
     private lateinit var statusTextView: TextView
+    private lateinit var logButton: Button
 
     private val bluetoothAdapter: BluetoothAdapter? by lazy {
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -61,6 +62,11 @@ class MainActivity : ComponentActivity() {
         startScanButton = findViewById(R.id.startScanButton)
         stopScanButton = findViewById(R.id.stopScanButton)
         statusTextView = findViewById(R.id.statusTextView)
+        logButton = findViewById(R.id.logButton)
+
+        logButton.setOnClickListener {
+            logDownload()
+        }
 
         startScanButton.setOnClickListener {
 //            startBLEScan()
@@ -255,6 +261,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun spaceSDKStopUwbRanging() {
-//        growSpaceSDK.stopUwbRanging()
+        spaceUWB.stopUwbRanging(
+            onComplete = { result ->
+                if (result.isFailure) {
+                    Log.e("MMMIIIN", "❌ UWB 작업 중지 실패: ${result.exceptionOrNull()}")
+                } else {
+                    Log.d("MMMIIIN", "✅ UWB 작업 중지 성공")
+                }
+            }
+        )
+    }
+
+    private fun logDownload() {
+        spaceUWB.exportLogsTxt();
     }
 }

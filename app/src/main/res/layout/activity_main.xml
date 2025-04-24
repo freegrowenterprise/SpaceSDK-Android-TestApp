@@ -18,6 +18,12 @@
         android:text="Stop BLE Scan"
         android:layout_marginTop="8dp"/>
 
+    <Button
+        android:id="@+id/logButton"
+        android:layout_width="60dp"
+        android:layout_height="wrap_content"
+        android:text="Log" />
+
     <TextView
         android:id="@+id/statusTextView"
         android:layout_width="match_parent"
