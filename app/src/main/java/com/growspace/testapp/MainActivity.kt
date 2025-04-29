@@ -24,6 +24,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+
 data class RssiTime(val rssi: Int, val time: Long)
 
 class MainActivity : ComponentActivity() {
@@ -87,6 +93,9 @@ class MainActivity : ComponentActivity() {
 //                }
 //            }
         }
+
+        CompanionActivityHolder.activity = this
+//        requestIgnoreBatteryOptimizations()
 
 //        growSpaceSDK = GrowSpaceSDK(apiKey, this)
     }
@@ -274,5 +283,17 @@ class MainActivity : ComponentActivity() {
 
     private fun logDownload() {
         spaceUWB.exportLogsTxt();
+    }
+
+    private fun requestIgnoreBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val packageName = packageName
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+            }
+        }
     }
 }
