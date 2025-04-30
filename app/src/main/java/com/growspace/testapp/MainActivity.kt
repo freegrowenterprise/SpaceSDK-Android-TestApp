@@ -64,6 +64,9 @@ class MainActivity : ComponentActivity() {
     private var lastBestChangeTime: Long = 0
     private var devicesInfoList = mutableStateListOf<DeviceInfo>()
     private var showLoading = mutableStateOf(false)
+    private var isScanning = mutableStateOf(false)
+    private var isDemoMode = mutableStateOf(false)
+    private var showDemoDialog = mutableStateOf(false)
 
     private val apiKey = "API-KEY"
     private lateinit var spaceUWB: SpaceUwb
@@ -91,11 +94,6 @@ class MainActivity : ComponentActivity() {
             val distanceLimit = remember { mutableFloatStateOf(4.0f) }
             val signalPriority = remember { mutableStateOf(true) }
 
-            val showLoading = remember { mutableStateOf(false) }
-            val isScanning = remember { mutableStateOf(false) }
-            val isDemoMode = remember { mutableStateOf(false) }
-            val showDemoDialog = remember { mutableStateOf(false) }
-
             MaterialTheme(
                 colorScheme = CustomColorScheme
             ) {
@@ -117,12 +115,20 @@ class MainActivity : ComponentActivity() {
                         isDemoMode = isDemoMode,
                         showDemoDialog = showDemoDialog,
                         onStartScan = {
+                            devicesInfoList.clear()  // 스캔 시작 시 리스트 초기화
+                            showLoading.value = true
+                            isScanning.value = true
+                            isDemoMode.value = false
                             spaceSDKStartUwbRanging()
                         },
                         onStopScan = {
                             spaceSDKStopUwbRanging()
+                            showLoading.value = false
+                            isDemoMode.value = false
+                            isScanning.value = false
                         },
                         updateDemoDevices = { updateDemoDevices(currentMaxConnectCount = 4) },
+                        clearDevices = { devicesInfoList.clear() }
                     )
                 }
             }
@@ -143,7 +149,8 @@ class MainActivity : ComponentActivity() {
         isDemoMode: MutableState<Boolean>,
         isScanning: MutableState<Boolean>,
         showDemoDialog: MutableState<Boolean>,
-        updateDemoDevices: () -> Unit
+        updateDemoDevices: () -> Unit,
+        clearDevices: () -> Unit
     ) {
 //        var statusText by remember { mutableStateOf("") }
         var currentMaxConnectCount by remember { mutableStateOf(maxConnectCount) }
@@ -312,6 +319,14 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                } else {
+                    // 장치가 없을 때 표시할 UI
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("검색된 장치가 없습니다.")
+                    }
                 }
             }
 
@@ -328,7 +343,7 @@ class MainActivity : ComponentActivity() {
                         showLoading.value = false
                         isDemoMode.value = false
                         isScanning.value = false
-                        devicesInfoList.clear()
+//                        clearDevices()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                     modifier = Modifier.weight(1f)
@@ -338,7 +353,7 @@ class MainActivity : ComponentActivity() {
 
                 Button(
                     onClick = {
-                        devicesInfoList.clear()
+                        clearDevices()
                         showLoading.value = true
                         isScanning.value = true
                         isDemoMode.value = false
@@ -419,14 +434,6 @@ class MainActivity : ComponentActivity() {
                         azimuth = -180f + Random.nextFloat() * 360f,
                         elevation = -90f + Random.nextFloat() * 180f
                     )
-                )
-            }
-        } else {
-            for (i in 0 until devicesInfoList.size) {
-                devicesInfoList[i] = devicesInfoList[i].copy(
-                    distance = 0.5f + Random.nextFloat() * 7.5f,
-                    azimuth = -180f + Random.nextFloat() * 360f,
-                    elevation = -90f + Random.nextFloat() * 180f
                 )
             }
         }
@@ -567,16 +574,22 @@ class MainActivity : ComponentActivity() {
                     elevation = result.elevation ?: 0f
                 )
 
-                val existingIndex = devicesInfoList.indexOfFirst { it.name == deviceId }
-                if (existingIndex != -1) {
-                    devicesInfoList[existingIndex] = deviceInfo
-                } else {
-                    devicesInfoList.add(deviceInfo)
+                runOnUiThread {
+                    val existingIndex = devicesInfoList.indexOfFirst { it.name == deviceId }
+                    if (existingIndex != -1) {
+                        devicesInfoList[existingIndex] = deviceInfo
+                    } else {
+                        devicesInfoList.add(deviceInfo)
+                    }
+                    Log.d("UWB_DEBUG", "Device updated: $deviceId, Total devices: ${devicesInfoList.size}")
                 }
             },
             onDisconnect = { result ->
                 val deviceId = result.deviceName
-                devicesInfoList.removeIf { it.name == deviceId }
+                runOnUiThread {
+                    devicesInfoList.removeIf { it.name == deviceId }
+                    Log.d("UWB_DEBUG", "Device disconnected: $deviceId, Remaining devices: ${devicesInfoList.size}")
+                }
             }
         )
     }
