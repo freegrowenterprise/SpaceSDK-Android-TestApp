@@ -255,16 +255,36 @@ class MainActivity : ComponentActivity() {
 //        growSpaceSDK.stopScanning()
 //    }
 //
+    private val deviceInfoMap = mutableMapOf<String, String>()  // key = device ID, value = 표시 텍스트
+
     private fun spaceSDKStartUwbRanging() {
         spaceUWB.startUwbRanging(
             onUpdate = { result ->
-                Log.e(
-                    "MMMIIIN",
-                    "✅ UWB 장치 발견: ${result.deviceName} ${result.distance} ${result.azimuth} ${result.elevation}"
-                )
+                runOnUiThread {
+                    val deviceId = result.deviceName
+
+                    val newText = """
+                    ✅ UWB 장치 발견
+                    ID: $deviceId
+                    거리: ${result.distance} m
+                    방위각: ${result.azimuth}°
+                    고도각: ${result.elevation}°
+                """.trimIndent()
+
+                    // 👇 동일한 기기가 이미 있다면 덮어쓰기
+                    deviceInfoMap[deviceId] = newText
+
+                    // 👇 전체 Map을 합쳐서 화면 표시
+                    statusTextView.text = deviceInfoMap.values.joinToString(separator = "\n\n")
+                }
             },
             onDisconnect = { result ->
-                Log.e("MMMIIIN", "❌ UWB 장치 연결 끊김: ${result.deviceName} ${result.disConnectType}")
+                runOnUiThread {
+                    val deviceId = result.deviceName
+                    deviceInfoMap.remove(deviceId)
+
+                    statusTextView.text = deviceInfoMap.values.joinToString(separator = "\n\n")
+                }
             }
         )
     }
