@@ -48,6 +48,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 
 data class RssiTime(val rssi: Int, val time: Long)
 
@@ -82,16 +89,20 @@ class MainActivity : ComponentActivity() {
         onSecondary = Color.White
     )
 
+    private val CHANNEL_ID = "device_list_channel"
+    private val NOTIFICATION_ID = 1
+    private var notificationTimer: Job? = null
+
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        createNotificationChannel()
         requestPermissions()
         spaceUWB = SpaceUwb(apiKey, this, this)
         CompanionActivityHolder.activity = this
 
         setContent {
-            // UI에 필요한 상태들 remember로 선언
-            val distanceLimit = remember { mutableFloatStateOf(4.0f) }
+            val distanceLimit = remember { mutableFloatStateOf(8.0f) }
             val signalPriority = remember { mutableStateOf(true) }
 
             MaterialTheme(
@@ -115,7 +126,7 @@ class MainActivity : ComponentActivity() {
                         isDemoMode = isDemoMode,
                         showDemoDialog = showDemoDialog,
                         onStartScan = {
-                            devicesInfoList.clear()  // 스캔 시작 시 리스트 초기화
+                            devicesInfoList.clear()
                             showLoading.value = true
                             isScanning.value = true
                             isDemoMode.value = false
@@ -152,11 +163,9 @@ class MainActivity : ComponentActivity() {
         updateDemoDevices: () -> Unit,
         clearDevices: () -> Unit
     ) {
-//        var statusText by remember { mutableStateOf("") }
         var currentMaxConnectCount by remember { mutableStateOf(maxConnectCount) }
         val coroutineScope = rememberCoroutineScope()
 
-        // 데모 모드 타이머 효과
         LaunchedEffect(showLoading.value, isScanning.value) {
             if (showLoading.value && isScanning.value) {
                 delay(5000)
@@ -166,7 +175,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 데모 모드 실행
         LaunchedEffect(isDemoMode.value) {
             while (isDemoMode.value) {
                 delay(1000)
@@ -174,7 +182,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 데모 모드 다이얼로그
         if (showDemoDialog.value) {
             AlertDialog(
                 onDismissRequest = {
@@ -213,7 +220,6 @@ class MainActivity : ComponentActivity() {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // 상단 제목
             Text(
                 text = "Space UWB Scanner",
                 style = MaterialTheme.typography.titleLarge,
@@ -222,7 +228,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 최대 연결 개수 설정
             MaxConnectionSelector(
                 maxConnectCount = currentMaxConnectCount,
                 onValueChange = { newValue ->
@@ -232,7 +237,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 거리 설정
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -253,7 +257,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 스위치 설정
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -272,7 +275,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 디바이스 정보 카드들 (스크롤 가능한 영역)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -297,7 +299,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 } else if (deviceInfoList.isNotEmpty()) {
-                    // 장치 리스트
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -320,7 +321,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 } else {
-                    // 장치가 없을 때 표시할 UI
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -332,7 +332,6 @@ class MainActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 스캔 버튼
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -343,7 +342,6 @@ class MainActivity : ComponentActivity() {
                         showLoading.value = false
                         isDemoMode.value = false
                         isScanning.value = false
-//                        clearDevices()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                     modifier = Modifier.weight(1f)
@@ -363,6 +361,15 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Text("Start UWB Scan")
                 }
+            }
+        }
+
+        // 알림 타이머 시작/중지
+        LaunchedEffect(isScanning.value) {
+            if (isScanning.value) {
+                startNotificationTimer()
+            } else {
+                stopNotificationTimer()
             }
         }
     }
@@ -427,7 +434,6 @@ class MainActivity : ComponentActivity() {
     private fun updateDemoDevices(currentMaxConnectCount: Int) {
         runOnUiThread {
             if (devicesInfoList.isEmpty()) {
-                // 처음 데모 모드 시작할 때만 새로운 장치 추가
                 repeat(currentMaxConnectCount) { index ->
                     devicesInfoList.add(
                         DeviceInfo(
@@ -439,7 +445,6 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } else {
-                // 기존 장치들의 값만 랜덤하게 업데이트
                 val updatedList = devicesInfoList.map { device ->
                     device.copy(
                         distance = 0.5f + Random.nextFloat() * 7.5f,
@@ -545,7 +550,8 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.BLUETOOTH_ADVERTISE,
             Manifest.permission.BLUETOOTH,
-            Manifest.permission.UWB_RANGING
+            Manifest.permission.UWB_RANGING,
+            Manifest.permission.POST_NOTIFICATIONS
         )
 
         if (permissions.any {
@@ -579,7 +585,7 @@ class MainActivity : ComponentActivity() {
         spaceUWB.startUwbRanging(
             onUpdate = { result ->
                 val deviceId = result.deviceName
-                showLoading.value = false  // 첫 번째 장치가 발견되면 로딩 UI 숨김
+                showLoading.value = false
 
                 val deviceInfo = DeviceInfo(
                     name = deviceId,
@@ -634,5 +640,88 @@ class MainActivity : ComponentActivity() {
                 startActivity(intent)
             }
         }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Device List Updates"
+            val descriptionText = "Shows updates about connected devices"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+                enableLights(true)
+                enableVibration(true)
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showDeviceListNotification() {
+        val notificationManager = NotificationManagerCompat.from(this)
+        
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val deviceListText = if (devicesInfoList.isEmpty()) {
+            "연결된 장치가 없습니다."
+        } else {
+            devicesInfoList.joinToString("\n") { device ->
+                "${device.name}: ${"%.2f".format(device.distance)}m"
+            }
+        }
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("연결된 장치 목록")
+            .setContentText("${devicesInfoList.size}개의 장치가 연결되어 있습니다.")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText(deviceListText))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setOngoing(true)
+            .build()
+
+        try {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationManager.notify(NOTIFICATION_ID, notification)
+                Log.d("Notification", "알림이 표시되었습니다.")
+            } else {
+                Log.e("Notification", "알림 권한이 없습니다.")
+            }
+        } catch (e: Exception) {
+            Log.e("Notification", "알림 표시 중 오류 발생: ${e.message}")
+        }
+    }
+
+    private fun startNotificationTimer() {
+        notificationTimer?.cancel()
+        notificationTimer = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                showDeviceListNotification()
+                delay(30000)
+            }
+        }
+    }
+
+    private fun stopNotificationTimer() {
+        notificationTimer?.cancel()
+        notificationTimer = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        stopNotificationTimer()
     }
 }
