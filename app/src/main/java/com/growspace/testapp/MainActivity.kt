@@ -425,16 +425,30 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateDemoDevices(currentMaxConnectCount: Int) {
-        if (devicesInfoList.isEmpty()) {
-            repeat(currentMaxConnectCount) { index ->
-                devicesInfoList.add(
-                    DeviceInfo(
-                        name = "DEMO-${1000 + index}",
+        runOnUiThread {
+            if (devicesInfoList.isEmpty()) {
+                // 처음 데모 모드 시작할 때만 새로운 장치 추가
+                repeat(currentMaxConnectCount) { index ->
+                    devicesInfoList.add(
+                        DeviceInfo(
+                            name = "DEMO-${1000 + index}",
+                            distance = 0.5f + Random.nextFloat() * 7.5f,
+                            azimuth = -180f + Random.nextFloat() * 360f,
+                            elevation = -90f + Random.nextFloat() * 180f
+                        )
+                    )
+                }
+            } else {
+                // 기존 장치들의 값만 랜덤하게 업데이트
+                val updatedList = devicesInfoList.map { device ->
+                    device.copy(
                         distance = 0.5f + Random.nextFloat() * 7.5f,
                         azimuth = -180f + Random.nextFloat() * 360f,
                         elevation = -90f + Random.nextFloat() * 180f
                     )
-                )
+                }
+                devicesInfoList.clear()
+                devicesInfoList.addAll(updatedList)
             }
         }
     }
