@@ -8,106 +8,435 @@ import android.bluetooth.le.*
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import android.widget.Button
-import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.growspace.sdk.SpaceUwb
-//import com.growspace.sdk.GrowSpaceSDK
-//import com.growspace.sdk.model.ScanRate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
-
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.Color
+import com.growspace.testapp.model.DeviceInfo
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.coroutines.delay
+import kotlin.random.Random
 
 data class RssiTime(val rssi: Int, val time: Long)
 
 class MainActivity : ComponentActivity() {
-
-    private lateinit var startScanButton: Button
-    private lateinit var stopScanButton: Button
-    private lateinit var statusTextView: TextView
-    private lateinit var logButton: Button
-
     private val bluetoothAdapter: BluetoothAdapter? by lazy {
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothManager.adapter
     }
     private val scanner: BluetoothLeScanner? by lazy { bluetoothAdapter?.bluetoothLeScanner }
-    private val discoveredDevices = ConcurrentHashMap<String, RssiTime>() // ✅ 발견된 BLE 목록 (시간 저장)
-    private val handler = Handler(Looper.getMainLooper())
+    private val discoveredDevices = ConcurrentHashMap<String, RssiTime>()
     private var scanCallback: ScanCallback? = null
     private var previousBestMacAddress: String? = null
     private var previousBestRssi: Int = Int.MIN_VALUE
     private var lastBestChangeTime: Long = 0
+    private var devicesInfoList = mutableStateListOf<DeviceInfo>()
+    private var showLoading = mutableStateOf(false)
 
-    private val apiKey = "553f1709-a245-404f-a02a-d3bc4861be43";
-
-    //    private lateinit var growSpaceSDK: GrowSpaceSDK
+    private val apiKey = "API-KEY"
     private lateinit var spaceUWB: SpaceUwb
+
+    private val CustomColorScheme = lightColorScheme(
+        primary = Color.Black,
+        onPrimary = Color.White,
+        background = Color.White,
+        onBackground = Color.Black,
+        surface = Color.White,
+        onSurface = Color.Black,
+        secondary = Color.Gray,
+        onSecondary = Color.White
+    )
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
         requestPermissions()
-
         spaceUWB = SpaceUwb(apiKey, this, this)
-
-        startScanButton = findViewById(R.id.startScanButton)
-        stopScanButton = findViewById(R.id.stopScanButton)
-        statusTextView = findViewById(R.id.statusTextView)
-        logButton = findViewById(R.id.logButton)
-
-        logButton.setOnClickListener {
-            logDownload()
-        }
-
-        startScanButton.setOnClickListener {
-//            startBLEScan()
-//            spaceSDKStartScan()
-            spaceSDKStartUwbRanging()
-            statusTextView.text = "✅ 스캔 시작됨"
-        }
-
-        stopScanButton.setOnClickListener {
-//            stopBLEScan()
-            spaceSDKStopUwbRanging()
-            statusTextView.text = "❌ 스캔 중지됨"
-//            sendBeaconData(macAddress = "c3000029d2a5") { response ->
-//                if (response != null) {
-//                    println("API 통신 결과 : $response")
-//                } else {
-//                    println("API 통신 실패")
-//                }
-//            }
-        }
-
         CompanionActivityHolder.activity = this
-//        requestIgnoreBatteryOptimizations()
 
-//        growSpaceSDK = GrowSpaceSDK(apiKey, this)
+        setContent {
+            // UI에 필요한 상태들 remember로 선언
+            val distanceLimit = remember { mutableFloatStateOf(4.0f) }
+            val signalPriority = remember { mutableStateOf(true) }
+
+            val showLoading = remember { mutableStateOf(false) }
+            val isScanning = remember { mutableStateOf(false) }
+            val isDemoMode = remember { mutableStateOf(false) }
+            val showDemoDialog = remember { mutableStateOf(false) }
+
+            MaterialTheme(
+                colorScheme = CustomColorScheme
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainScreen(
+                        maxConnectCount = 4,
+                        distanceLimit = distanceLimit.value,
+                        onDistanceChange = {
+                            distanceLimit.value = it.toFloatOrNull() ?: distanceLimit.value
+                        },
+                        signalPriority = signalPriority.value,
+                        onSignalPriorityToggle = { signalPriority.value = it },
+                        deviceInfoList = devicesInfoList,
+                        showLoading = showLoading,
+                        isScanning = isScanning,
+                        isDemoMode = isDemoMode,
+                        showDemoDialog = showDemoDialog,
+                        onStartScan = {
+                            spaceSDKStartUwbRanging()
+                        },
+                        onStopScan = {
+                            spaceSDKStopUwbRanging()
+                        },
+                        updateDemoDevices = { updateDemoDevices(currentMaxConnectCount = 4) },
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun MainScreen(
+        maxConnectCount: Int,
+        onStartScan: () -> Unit,
+        onStopScan: () -> Unit,
+        distanceLimit: Float,
+        onDistanceChange: (String) -> Unit,
+        signalPriority: Boolean,
+        onSignalPriorityToggle: (Boolean) -> Unit,
+        deviceInfoList: List<DeviceInfo>,
+        showLoading: MutableState<Boolean>,
+        isDemoMode: MutableState<Boolean>,
+        isScanning: MutableState<Boolean>,
+        showDemoDialog: MutableState<Boolean>,
+        updateDemoDevices: () -> Unit
+    ) {
+//        var statusText by remember { mutableStateOf("") }
+        var currentMaxConnectCount by remember { mutableStateOf(maxConnectCount) }
+        val coroutineScope = rememberCoroutineScope()
+
+        // 데모 모드 타이머 효과
+        LaunchedEffect(showLoading.value, isScanning.value) {
+            if (showLoading.value && isScanning.value) {
+                delay(5000)
+                if (deviceInfoList.isEmpty()) {
+                    showDemoDialog.value = true
+                }
+            }
+        }
+
+        // 데모 모드 실행
+        LaunchedEffect(isDemoMode.value) {
+            while (isDemoMode.value) {
+                delay(1000)
+                updateDemoDevices()
+            }
+        }
+
+        // 데모 모드 다이얼로그
+        if (showDemoDialog.value) {
+            AlertDialog(
+                onDismissRequest = {
+                    showDemoDialog.value = false
+                    showLoading.value = false
+                },
+                title = { Text("데모 모드") },
+                text = { Text("장치를 찾을 수 없습니다. 데모 모드를 실행하시겠습니까?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            isDemoMode.value = true
+                            showDemoDialog.value = false
+                            showLoading.value = false
+                        }
+                    ) {
+                        Text("확인")
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = {
+                            showDemoDialog.value = false
+                            showLoading.value = false
+                            isScanning.value = false
+                        }
+                    ) {
+                        Text("취소")
+                    }
+                }
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            // 상단 제목
+            Text(
+                text = "Space UWB Scanner",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 최대 연결 개수 설정
+            MaxConnectionSelector(
+                maxConnectCount = currentMaxConnectCount,
+                onValueChange = { newValue ->
+                    currentMaxConnectCount = newValue
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 거리 설정
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("최대 연결 거리 설정 (m)", style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.weight(1f))
+                OutlinedTextField(
+                    value = distanceLimit.toString(),
+                    onValueChange = onDistanceChange,
+                    modifier = Modifier.width(100.dp),
+                    singleLine = true
+                )
+            }
+            Text(
+                text = "설정 거리에서 초과되었을 때 연결을 끊고 새로운 장치 연결을 시도합니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 스위치 설정
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("신호 강한 순 우선 연결 설정", style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.weight(1f))
+                Switch(
+                    checked = signalPriority,
+                    onCheckedChange = onSignalPriorityToggle
+                )
+            }
+            Text(
+                text = "RSSI가 가장 큰 UWB 장치부터 연결을 시도합니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 디바이스 정보 카드들 (스크롤 가능한 영역)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                if (showLoading.value) {
+                    // 로딩 UI
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("장치 검색 중...")
+                        }
+                    }
+                } else if (deviceInfoList.isNotEmpty()) {
+                    // 장치 리스트
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        deviceInfoList.forEach { device ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F7))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Device Name: ${device.name}")
+                                    Text("Distance: ${"%.2f".format(device.distance)}m")
+                                    Text("Azimuth: ${device.azimuth}°")
+                                    Text("Elevation: ${device.elevation}°")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 스캔 버튼
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        onStopScan()
+                        showLoading.value = false
+                        isDemoMode.value = false
+                        isScanning.value = false
+                        devicesInfoList.clear()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Stop UWB Scan")
+                }
+
+                Button(
+                    onClick = {
+                        devicesInfoList.clear()
+                        showLoading.value = true
+                        isScanning.value = true
+                        isDemoMode.value = false
+                        onStartScan()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Start UWB Scan")
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun MaxConnectionSelector(
+        maxConnectCount: Int,
+        onValueChange: (Int) -> Unit
+    ) {
+        var expanded by remember { mutableStateOf(false) }
+        val options = (1..6).toList()
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("최대 연결 개수 설정", style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.weight(1f))
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    readOnly = true,
+                    value = "$maxConnectCount",
+                    onValueChange = {},
+                    modifier = Modifier
+                        .menuAnchor()
+                        .width(100.dp),
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    options.forEach { count ->
+                        DropdownMenuItem(
+                            text = { Text("$count 개") },
+                            onClick = {
+                                onValueChange(count)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = "7개 이상 동시 연결 시 OS 내부적으로 충돌이 발생합니다.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+
+    private fun updateDemoDevices(currentMaxConnectCount: Int) {
+        if (devicesInfoList.isEmpty()) {
+            repeat(currentMaxConnectCount) { index ->
+                devicesInfoList.add(
+                    DeviceInfo(
+                        name = "DEMO-${1000 + index}",
+                        distance = 0.5f + Random.nextFloat() * 7.5f,
+                        azimuth = -180f + Random.nextFloat() * 360f,
+                        elevation = -90f + Random.nextFloat() * 180f
+                    )
+                )
+            }
+        } else {
+            for (i in 0 until devicesInfoList.size) {
+                devicesInfoList[i] = devicesInfoList[i].copy(
+                    distance = 0.5f + Random.nextFloat() * 7.5f,
+                    azimuth = -180f + Random.nextFloat() * 360f,
+                    elevation = -90f + Random.nextFloat() * 180f
+                )
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
     private fun startBLEScan() {
         if (!hasBluetoothPermission()) {
-            statusTextView.text = "❌ 블루투스 권한이 필요합니다."
             return
         }
-
-        statusTextView.text = "🔍 BLE 스캔 시작 중..."
 
         scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -117,33 +446,25 @@ class MainActivity : ComponentActivity() {
                 val serviceData = result.scanRecord?.serviceData
                 val currentTime = System.currentTimeMillis()
 
-                // ✅ 특정 UUID("ffe1")를 가진 BLE만 필터링
                 if (!serviceData.isNullOrEmpty()) {
                     for ((uuid, data) in serviceData) {
                         val uuidString = uuid.toString().lowercase()
 
                         if (uuidString.contains("ffe1") && rssi > -76) {
-                            // ✅ 3초 이상 지난 BLE 제거
                             discoveredDevices.entries.removeIf { (_, time) -> currentTime - time.time > 3000 }
-
-                            // ✅ RSSI 업데이트 (가장 최근 값으로 갱신)
                             discoveredDevices[macAddress] = RssiTime(rssi.toInt(), currentTime)
 
-                            // ✅ RSSI가 가장 높은 BLE 찾기
                             val bestBle = discoveredDevices.maxByOrNull { it.value.rssi }?.key
                             val bestRssi = discoveredDevices[bestBle]
 
-                            // ✅ 현재 BLE가 바뀌었을 경우
                             if (bestBle != null && bestRssi != null) {
                                 if (bestBle != previousBestMacAddress) {
-                                    // ✅ 변경된 BLE가 최소 1초 동안 유지되어야 감지
                                     if (currentTime - lastBestChangeTime >= 1000) {
                                         previousBestMacAddress = bestBle
                                         previousBestRssi = bestRssi.rssi
                                         lastBestChangeTime = currentTime
 
                                         Log.e("MMMIIIN", "API 조회!!")
-                                        // ✅ API 호출 및 에러 핸들링 추가
                                         sendBeaconData(bestBle) { result ->
                                             result.onSuccess { response ->
                                                 Log.e("MMMIIIN", "✅ 내부 서버 응답: ${response.zoneName}")
@@ -153,7 +474,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 } else {
-                                    lastBestChangeTime = currentTime // BLE가 유지되면 시간 갱신
+                                    lastBestChangeTime = currentTime
                                 }
                             }
                         }
@@ -167,12 +488,10 @@ class MainActivity : ComponentActivity() {
         }
 
         scanner?.startScan(scanCallback)
-        statusTextView.text = "✅ BLE 스캔 시작됨"
     }
 
     private fun stopBLEScan() {
         if (!hasBluetoothPermission()) {
-            statusTextView.text = "❌ 블루투스 권한이 필요합니다."
             return
         }
 
@@ -218,73 +537,46 @@ class MainActivity : ComponentActivity() {
     fun sendBeaconData(macAddress: String, onResponse: (Result<SpaceLocation>) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-//                val response = ApiClient.sendBeaconData(BeaconRequest(macAddress))
-//                Log.e("MMMIIIN", "✅ 통신 서버 응답: ${response.zoneName}")
-//                onResponse(Result.success(response))
                 ApiClient.sendBeaconData(macAddress) { spaceLocation ->
                     if (spaceLocation != null) {
                         Log.e(
                             "MMMIIIN",
                             "✅ 서버 응답: ${spaceLocation.zoneName}, X: ${spaceLocation.locationX}, Y: ${spaceLocation.locationY}"
                         )
-//                        println("✅ 서버 응답: ${spaceLocation.zoneName}, X: ${spaceLocation.locationX}, Y: ${spaceLocation.locationY}")
                     } else {
                         Log.e("MMMIIIN", "❌ 응답 데이터 없음")
                     }
                 }
             } catch (e: Exception) {
                 Log.e("MMMIIIN", "❌ 통신 API 요청 실패: ${e.localizedMessage}")
-                onResponse(Result.failure(e)) // ✅ 에러 발생 시 실패 전달
+                onResponse(Result.failure(e))
             }
         }
     }
 
-    //    private fun spaceSDKStartScan() {
-//        val growSpaceSDK = GrowSpaceSDK(apiKey, this)
-//        growSpaceSDK.startScanning(ScanRate.MEDIUM) { result ->
-//            result.onSuccess { response ->
-//                Log.e("MMMIIIN", "✅ SDK 서버 응답: ${response}")
-//            }.onFailure { error ->
-//                Log.e("MMMIIIN", "❌ SDK 요청 실패: ${error.localizedMessage}")
-//            }
-//        }
-//    }
-//
-//    private fun spaceSDKStopScan() {
-//        val growSpaceSDK = GrowSpaceSDK("API_KEY", this)
-//        growSpaceSDK.stopScanning()
-//    }
-//
-    private val deviceInfoMap = mutableMapOf<String, String>()  // key = device ID, value = 표시 텍스트
-
     private fun spaceSDKStartUwbRanging() {
         spaceUWB.startUwbRanging(
             onUpdate = { result ->
-                runOnUiThread {
-                    val deviceId = result.deviceName
+                val deviceId = result.deviceName
+                showLoading.value = false  // 첫 번째 장치가 발견되면 로딩 UI 숨김
 
-                    val newText = """
-                    ✅ UWB 장치 발견
-                    ID: $deviceId
-                    거리: ${result.distance} m
-                    방위각: ${result.azimuth}°
-                    고도각: ${result.elevation}°
-                """.trimIndent()
+                val deviceInfo = DeviceInfo(
+                    name = deviceId,
+                    distance = result.distance,
+                    azimuth = result.azimuth,
+                    elevation = result.elevation ?: 0f
+                )
 
-                    // 👇 동일한 기기가 이미 있다면 덮어쓰기
-                    deviceInfoMap[deviceId] = newText
-
-                    // 👇 전체 Map을 합쳐서 화면 표시
-                    statusTextView.text = deviceInfoMap.values.joinToString(separator = "\n\n")
+                val existingIndex = devicesInfoList.indexOfFirst { it.name == deviceId }
+                if (existingIndex != -1) {
+                    devicesInfoList[existingIndex] = deviceInfo
+                } else {
+                    devicesInfoList.add(deviceInfo)
                 }
             },
             onDisconnect = { result ->
-                runOnUiThread {
-                    val deviceId = result.deviceName
-                    deviceInfoMap.remove(deviceId)
-
-                    statusTextView.text = deviceInfoMap.values.joinToString(separator = "\n\n")
-                }
+                val deviceId = result.deviceName
+                devicesInfoList.removeIf { it.name == deviceId }
             }
         )
     }
@@ -302,7 +594,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun logDownload() {
-        spaceUWB.exportLogsTxt();
+        spaceUWB.exportLogsTxt()
     }
 
     private fun requestIgnoreBatteryOptimizations() {
