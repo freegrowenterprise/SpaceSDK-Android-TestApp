@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.growspace.testapp">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature
         android:name="android.hardware.bluetooth_le"
@@ -9,12 +8,6 @@
     <uses-feature
         android:name="android.hardware.uwb"
         android:required="false"/>
-    <uses-feature
-        android:name="android.hardware.camera.ar"
-        android:required="true"/>
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="true"/>
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -30,7 +23,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.UWB_RANGING"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <queries>
         <package android:name="androidx.core.uwb.backend"/>
@@ -43,8 +35,8 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.GrowSpaceTestApp"
         tools:replace="android:theme"
@@ -65,6 +57,14 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice"
             tools:ignore="ForegroundServicePermission" />
+        <meta-data
+            android:name="com.google.ar.core"
+            android:value="required" />
+
+        <meta-data
+            android:name="com.google.ar.core.min_apk_version"
+            android:value="190710000"
+            tools:replace="android:value" />
     </application>
 
 </manifest>

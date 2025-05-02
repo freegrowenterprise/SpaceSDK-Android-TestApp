@@ -28,7 +28,7 @@ class SpaceForegroundService: Service() {
 
 //    @SuppressLint("ForegroundServiceType")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-//        activity = CompanionActivityHolder.activity  // 안전하게 받아오기
+        activity = CompanionActivityHolder.activity
         if (activity != null) {
             spaceUWB = SpaceUwb("apiKey", this, activity!!)
         } else {
