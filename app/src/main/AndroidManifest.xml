@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.growspace.testapp">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature
         android:name="android.hardware.bluetooth_le"
@@ -24,7 +23,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.UWB_RANGING"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <queries>
         <package android:name="androidx.core.uwb.backend"/>
@@ -59,6 +57,14 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice"
             tools:ignore="ForegroundServicePermission" />
+        <meta-data
+            android:name="com.google.ar.core"
+            android:value="required" />
+
+        <meta-data
+            android:name="com.google.ar.core.min_apk_version"
+            android:value="190710000"
+            tools:replace="android:value" />
     </application>
 
 </manifest>
