@@ -189,7 +189,7 @@ fun RangingPage() {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Text("Device: ${device.name}")
                                     Text("거리: ${"%.2f".format(device.distance)}m")
-                                    Text("방향: ${device.azimuth}°, 고도: ${device.elevation}°")
+                                    Text("방위각: ${device.azimuth}°, 고도각: ${device.elevation}°")
                                 }
                             }
                         }
@@ -207,7 +207,6 @@ fun RangingPage() {
             ) {
                 Button(
                     onClick = { stopUwbScan() },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Stop")
