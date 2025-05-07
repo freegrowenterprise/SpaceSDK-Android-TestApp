@@ -53,6 +53,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.growspace.testapp.pages.AppNavHost
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 
@@ -63,12 +64,6 @@ class MainActivity : ComponentActivity() {
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothManager.adapter
     }
-    private val scanner: BluetoothLeScanner? by lazy { bluetoothAdapter?.bluetoothLeScanner }
-    private val discoveredDevices = ConcurrentHashMap<String, RssiTime>()
-    private var scanCallback: ScanCallback? = null
-    private var previousBestMacAddress: String? = null
-    private var previousBestRssi: Int = Int.MIN_VALUE
-    private var lastBestChangeTime: Long = 0
     private var devicesInfoList = mutableStateListOf<DeviceInfo>()
     private var showLoading = mutableStateOf(false)
     private var isScanning = mutableStateOf(false)
@@ -101,46 +96,56 @@ class MainActivity : ComponentActivity() {
         spaceUWB = SpaceUwb(apiKey, this, this)
         CompanionActivityHolder.activity = this
 
-        setContent {
-            val distanceLimit = remember { mutableFloatStateOf(8.0f) }
-            val signalPriority = remember { mutableStateOf(true) }
+//        setContent {
+//            val distanceLimit = remember { mutableFloatStateOf(8.0f) }
+//            val signalPriority = remember { mutableStateOf(true) }
+//
+//            MaterialTheme(
+//                colorScheme = CustomColorScheme
+//            ) {
+//                Surface(
+//                    modifier = Modifier.fillMaxSize(),
+//                    color = MaterialTheme.colorScheme.background
+//                ) {
+//                    MainScreen(
+//                        maxConnectCount = 4,
+//                        distanceLimit = distanceLimit.value,
+//                        onDistanceChange = {
+//                            distanceLimit.value = it.toFloatOrNull() ?: distanceLimit.value
+//                        },
+//                        signalPriority = signalPriority.value,
+//                        onSignalPriorityToggle = { signalPriority.value = it },
+//                        deviceInfoList = devicesInfoList,
+//                        showLoading = showLoading,
+//                        isScanning = isScanning,
+//                        isDemoMode = isDemoMode,
+//                        showDemoDialog = showDemoDialog,
+//                        onStartScan = {
+//                            devicesInfoList.clear()
+//                            showLoading.value = true
+//                            isScanning.value = true
+//                            isDemoMode.value = false
+//                            spaceSDKStartUwbRanging()
+//                        },
+//                        onStopScan = {
+//                            spaceSDKStopUwbRanging()
+//                            showLoading.value = false
+//                            isDemoMode.value = false
+//                            isScanning.value = false
+//                        },
+//                        updateDemoDevices = { updateDemoDevices(currentMaxConnectCount = 4) },
+//                        clearDevices = { devicesInfoList.clear() }
+//                    )
+//                }
+//            }
+//        }
 
+        setContent {
             MaterialTheme(
                 colorScheme = CustomColorScheme
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    MainScreen(
-                        maxConnectCount = 4,
-                        distanceLimit = distanceLimit.value,
-                        onDistanceChange = {
-                            distanceLimit.value = it.toFloatOrNull() ?: distanceLimit.value
-                        },
-                        signalPriority = signalPriority.value,
-                        onSignalPriorityToggle = { signalPriority.value = it },
-                        deviceInfoList = devicesInfoList,
-                        showLoading = showLoading,
-                        isScanning = isScanning,
-                        isDemoMode = isDemoMode,
-                        showDemoDialog = showDemoDialog,
-                        onStartScan = {
-                            devicesInfoList.clear()
-                            showLoading.value = true
-                            isScanning.value = true
-                            isDemoMode.value = false
-                            spaceSDKStartUwbRanging()
-                        },
-                        onStopScan = {
-                            spaceSDKStopUwbRanging()
-                            showLoading.value = false
-                            isDemoMode.value = false
-                            isScanning.value = false
-                        },
-                        updateDemoDevices = { updateDemoDevices(currentMaxConnectCount = 4) },
-                        clearDevices = { devicesInfoList.clear() }
-                    )
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    AppNavHost() // ✅ 네비게이션 시작점 호출
                 }
             }
         }
@@ -458,90 +463,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun startBLEScan() {
-        if (!hasBluetoothPermission()) {
-            return
-        }
-
-        scanCallback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val device = result.device
-                val macAddress = device.address
-                val rssi = result.rssi.toLong()
-                val serviceData = result.scanRecord?.serviceData
-                val currentTime = System.currentTimeMillis()
-
-                if (!serviceData.isNullOrEmpty()) {
-                    for ((uuid, data) in serviceData) {
-                        val uuidString = uuid.toString().lowercase()
-
-                        if (uuidString.contains("ffe1") && rssi > -76) {
-                            discoveredDevices.entries.removeIf { (_, time) -> currentTime - time.time > 3000 }
-                            discoveredDevices[macAddress] = RssiTime(rssi.toInt(), currentTime)
-
-                            val bestBle = discoveredDevices.maxByOrNull { it.value.rssi }?.key
-                            val bestRssi = discoveredDevices[bestBle]
-
-                            if (bestBle != null && bestRssi != null) {
-                                if (bestBle != previousBestMacAddress) {
-                                    if (currentTime - lastBestChangeTime >= 1000) {
-                                        previousBestMacAddress = bestBle
-                                        previousBestRssi = bestRssi.rssi
-                                        lastBestChangeTime = currentTime
-
-                                        Log.e("MMMIIIN", "API 조회!!")
-                                        sendBeaconData(bestBle) { result ->
-                                            result.onSuccess { response ->
-                                                Log.e("MMMIIIN", "✅ 내부 서버 응답: ${response.zoneName}")
-                                            }.onFailure { error ->
-                                                Log.e("MMMIIIN", "❌ API 요청 실패: ${error.message}")
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    lastBestChangeTime = currentTime
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            override fun onScanFailed(errorCode: Int) {
-                println("❌ 스캔 실패: 에러 코드 $errorCode")
-            }
-        }
-
-        scanner?.startScan(scanCallback)
-    }
-
-    private fun stopBLEScan() {
-        if (!hasBluetoothPermission()) {
-            return
-        }
-
-        try {
-            scanCallback?.let {
-                scanner?.stopScan(it)
-                Log.d("MMMIIIN", "✅ BLE 스캔 중지됨")
-                scanCallback = null
-            }
-        } catch (e: SecurityException) {
-            Log.e("MMMIIIN", "❌ BLE 스캔 중지 실패: ${e.localizedMessage}")
-        }
-    }
-
-    private fun hasBluetoothPermission(): Boolean {
-        return ActivityCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.BLUETOOTH_SCAN
-        ) == PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.BLUETOOTH_CONNECT
-                ) == PackageManager.PERMISSION_GRANTED
-    }
 
     private fun requestPermissions() {
         val permissions = arrayOf(
@@ -558,26 +479,6 @@ class MainActivity : ComponentActivity() {
                 ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
             }) {
             ActivityCompat.requestPermissions(this, permissions, 1)
-        }
-    }
-
-    fun sendBeaconData(macAddress: String, onResponse: (Result<SpaceLocation>) -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                ApiClient.sendBeaconData(macAddress) { spaceLocation ->
-                    if (spaceLocation != null) {
-                        Log.e(
-                            "MMMIIIN",
-                            "✅ 서버 응답: ${spaceLocation.zoneName}, X: ${spaceLocation.locationX}, Y: ${spaceLocation.locationY}"
-                        )
-                    } else {
-                        Log.e("MMMIIIN", "❌ 응답 데이터 없음")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("MMMIIIN", "❌ 통신 API 요청 실패: ${e.localizedMessage}")
-                onResponse(Result.failure(e))
-            }
         }
     }
 
@@ -624,22 +525,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         )
-    }
-
-    private fun logDownload() {
-        spaceUWB.exportLogsTxt()
-    }
-
-    private fun requestIgnoreBatteryOptimizations() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val packageName = packageName
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                intent.data = Uri.parse("package:$packageName")
-                startActivity(intent)
-            }
-        }
     }
 
     private fun createNotificationChannel() {
