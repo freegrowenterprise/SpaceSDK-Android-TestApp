@@ -18,10 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.growspace.testapp.model.DeviceCoordinate
 import android.Manifest
 import android.widget.Toast
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.ui.geometry.Offset
 import com.growspace.testapp.pages.rtls.DeviceCoordinateViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +40,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
     val scanner = bluetoothAdapter.bluetoothLeScanner
 
     val devices = remember { mutableStateListOf<ScanResult>() }
-    val coordinates = remember { mutableStateMapOf<String, DeviceCoordinate>() }
+    val coordinates = remember { mutableStateMapOf<String, Offset>() }
     var isScanning by remember { mutableStateOf(false) }
 
     val permissionsLauncher = rememberLauncherForActivityResult(
@@ -142,7 +142,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
         ) {
             devices.forEach { result ->
                 val name = result.device.name ?: "Unknown"
-                val coordinate = coordinates[name] ?: DeviceCoordinate("", "")
+                val coordinate = coordinates[name] ?: Offset(0f, 0f)
 
                 Card(
                     modifier = Modifier
@@ -156,17 +156,35 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            var xText by remember(name) { mutableStateOf(coordinate.x.toString()) }
+                            var yText by remember(name) { mutableStateOf(coordinate.y.toString()) }
+
                             OutlinedTextField(
-                                value = coordinate.x,
-                                onValueChange = { coordinates[name] = coordinate.copy(x = it) },
+                                value = xText,
+                                onValueChange = {
+                                    xText = it
+                                    val x = it.toFloatOrNull()
+                                    if (x != null) {
+                                        coordinates[name] = Offset(x, coordinates[name]?.y ?: 0f)
+                                    }
+                                },
                                 label = { Text("X 좌표") },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
+
                             OutlinedTextField(
-                                value = coordinate.y,
-                                onValueChange = { coordinates[name] = coordinate.copy(y = it) },
+                                value = yText,
+                                onValueChange = {
+                                    yText = it
+                                    val y = it.toFloatOrNull()
+                                    if (y != null) {
+                                        coordinates[name] = Offset(coordinates[name]?.x ?: 0f, y)
+                                    }
+                                },
                                 label = { Text("Y 좌표") },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
                             )
                         }
                     }
