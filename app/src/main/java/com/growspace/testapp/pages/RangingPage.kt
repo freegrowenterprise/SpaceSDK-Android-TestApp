@@ -159,14 +159,24 @@ fun RangingPage() {
                     singleLine = true
                 )
             }
-            Text("RSSI가 큰 장치 우선 연결", style = MaterialTheme.typography.bodySmall)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("우선순위 연결", style = MaterialTheme.typography.bodyLarge)
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("신호 강한 순 우선 연결 설정", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.weight(1f))
                 Switch(
                     checked = signalPriority.value,
                     onCheckedChange = { signalPriority.value = it })
             }
+            Text(
+                text = "RSSI가 가장 큰 UWB 장치부터 연결을 시도합니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+
             Spacer(Modifier.height(16.dp))
             Box(modifier = Modifier
                 .weight(1f)
