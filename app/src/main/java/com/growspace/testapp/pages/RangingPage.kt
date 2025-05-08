@@ -1,13 +1,6 @@
 package com.growspace.testapp.pages
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
+import androidx.compose.material3.ExposedDropdownMenuBox
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
@@ -15,14 +8,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.growspace.sdk.SpaceUwb
 import com.growspace.testapp.model.DeviceInfo
 import kotlinx.coroutines.Job
@@ -36,6 +26,7 @@ fun RangingPage() {
     val context = LocalContext.current as ComponentActivity
     val spaceUWB = remember { SpaceUwb("API-KEY", context, context) }
 
+    val currentMaxConnectCount = remember { mutableIntStateOf(4) }
     val deviceInfoList = remember { mutableStateListOf<DeviceInfo>() }
     val showLoading = remember { mutableStateOf(false) }
     val isScanning = remember { mutableStateOf(false) }
@@ -146,6 +137,16 @@ fun RangingPage() {
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
             Spacer(Modifier.height(16.dp))
+
+            MaxConnectionSelector(
+                maxConnectCount = currentMaxConnectCount.value,
+                onValueChange = { newValue ->
+                    currentMaxConnectCount.value = newValue
+                }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("최대 연결 거리 설정 (m)", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.weight(1f))
@@ -245,4 +246,62 @@ fun RangingPage() {
             }
         )
     }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MaxConnectionSelector(
+    maxConnectCount: Int,
+    onValueChange: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = (1..6).toList()
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("최대 연결 개수 설정", style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.weight(1f))
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                readOnly = true,
+                value = "$maxConnectCount",
+                onValueChange = {},
+                modifier = Modifier
+                    .menuAnchor()
+                    .width(100.dp),
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { count ->
+                    DropdownMenuItem(
+                        text = { Text("$count 개") },
+                        onClick = {
+                            onValueChange(count)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    Text(
+        text = "7개 이상 동시 연결 시 OS 내부적으로 충돌이 발생합니다.",
+        style = MaterialTheme.typography.bodySmall,
+        color = Color.Gray
+    )
 }
