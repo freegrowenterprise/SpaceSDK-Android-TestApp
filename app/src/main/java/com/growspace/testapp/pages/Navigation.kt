@@ -13,12 +13,12 @@ import com.growspace.testapp.pages.rtls.RTLSPage
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
-    val deviceViewModel: DeviceCoordinateViewModel = viewModel()
+    val viewModel: DeviceCoordinateViewModel = viewModel()
 
     NavHost(navController, startDestination = "home") {
         composable("home") { HomeScreen(navController) }
         composable("ranging") { RangingPage() }
-        composable("rtls") { RTLSPage(navController) }
-        composable("uwbSetting") { UwbSettingPage(viewModel = deviceViewModel) }
+        composable("rtls") { RTLSPage(navController, viewModel = viewModel) }
+        composable("uwbSetting") { UwbSettingPage(viewModel = viewModel) }
     }
 }

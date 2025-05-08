@@ -69,9 +69,8 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                     if (deviceName.startsWith("FGU-") &&
                         devices.none { d -> d.device.address == it.device.address }) {
                         devices.add(it)
-                        // 저장된 좌표 있으면 반영
-                        viewModel.deviceCoordinates[it.device.address]?.let { coord ->
-                            coordinates[it.device.address] = coord
+                        viewModel.deviceCoordinates[deviceName]?.let { coord ->
+                            coordinates[deviceName] = coord
                         }
                     }
                 }
@@ -142,9 +141,8 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                 .padding(top = 8.dp)
         ) {
             devices.forEach { result ->
-                val mac = result.device.address
                 val name = result.device.name ?: "Unknown"
-                val coordinate = coordinates[mac] ?: DeviceCoordinate("", "")
+                val coordinate = coordinates[name] ?: DeviceCoordinate("", "")
 
                 Card(
                     modifier = Modifier
@@ -153,7 +151,6 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("이름: $name")
-                        Text("MAC: $mac")
                         Text("RSSI: ${result.rssi}")
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -161,13 +158,13 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = coordinate.x,
-                                onValueChange = { coordinates[mac] = coordinate.copy(x = it) },
+                                onValueChange = { coordinates[name] = coordinate.copy(x = it) },
                                 label = { Text("X 좌표") },
                                 modifier = Modifier.weight(1f)
                             )
                             OutlinedTextField(
                                 value = coordinate.y,
-                                onValueChange = { coordinates[mac] = coordinate.copy(y = it) },
+                                onValueChange = { coordinates[name] = coordinate.copy(y = it) },
                                 label = { Text("Y 좌표") },
                                 modifier = Modifier.weight(1f)
                             )
@@ -181,9 +178,9 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
 
         Button(
             onClick = {
-                coordinates.forEach { (addr, coord) ->
-                    viewModel.setCoordinate(addr, coord.x, coord.y)
-                    Log.d("SAVE", "[$addr] -> X=${coord.x}, Y=${coord.y}")
+                coordinates.forEach { (name, coord) ->
+                    viewModel.setCoordinate(name, coord.x, coord.y)
+                    Log.d("SAVE", "[$name] -> X=${coord.x}, Y=${coord.y}")
                 }
 
                 Toast.makeText(context, "저장 완료", Toast.LENGTH_SHORT).show()
