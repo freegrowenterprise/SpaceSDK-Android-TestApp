@@ -60,7 +60,12 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("io.github.freegrowenterprise:SpaceSDK-Android:0.0.1")
+
+    /// Remote Maven
+//    implementation("io.github.freegrowenterprise:SpaceSDK-Android:0.0.1")
+
+    /// Local Maven
+    implementation("com.growspace.sdk:growspacesdk:1.0.0")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.google.code.gson:gson:2.8.9")
