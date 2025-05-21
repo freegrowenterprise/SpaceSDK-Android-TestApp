@@ -12,6 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.growspace.sdk.SpaceUwb
 import com.growspace.testapp.model.DeviceInfo
@@ -111,7 +114,7 @@ fun RangingPage() {
 
     LaunchedEffect(showLoading.value, isScanning.value) {
         if (showLoading.value && isScanning.value) {
-            delay(5000)
+            delay(10000)
             if (deviceInfoList.isEmpty()) showDemoDialog.value = true
         }
     }
@@ -125,6 +128,14 @@ fun RangingPage() {
 
     LaunchedEffect(isScanning.value) {
         if (isScanning.value) startNotificationTimer() else stopNotificationTimer()
+    }
+
+    LaunchedEffect(deviceInfoList.size) {
+        if (showDemoDialog.value && deviceInfoList.isNotEmpty()) {
+            showDemoDialog.value = false
+            isDemoMode.value = false
+            showLoading.value = false
+        }
     }
 
     Surface(modifier = Modifier
@@ -239,7 +250,16 @@ fun RangingPage() {
                 showLoading.value = false
             },
             title = { Text("데모 모드") },
-            text = { Text("장치를 찾을 수 없습니다. 데모 모드를 실행하시겠습니까?") },
+            text = {
+                Text(
+                    buildAnnotatedString {
+                        append("장치를 찾을 수 없습니다. 데모 모드를 실행하시겠습니까?\n\n")
+                        withStyle(style = SpanStyle(color = Color.Gray)) {
+                            append("연결을 계속 시도하려면 창을 닫지 마세요.")
+                        }
+                    }
+                )
+            },
             confirmButton = {
                 Button(onClick = {
                     isDemoMode.value = true
