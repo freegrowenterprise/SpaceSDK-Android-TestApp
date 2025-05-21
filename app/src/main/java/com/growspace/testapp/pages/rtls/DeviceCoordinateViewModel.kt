@@ -9,7 +9,6 @@ import androidx.lifecycle.ViewModel
 //import com.growspace.testapp.model.DeviceCoordinate
 
 class DeviceCoordinateViewModel : ViewModel() {
-    // MAC 주소를 키로 하고 x, y 좌표를 저장
     private val _deviceCoordinates = mutableStateMapOf<String, Offset>()
     val deviceCoordinates: Map<String, Offset> = _deviceCoordinates
     val anchorDistances = mutableStateMapOf<String, Float>()
