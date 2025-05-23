@@ -51,7 +51,7 @@ https://github.com/user-attachments/assets/0a675881-3c08-4009-978a-acaaafa0b76d
 - 계산된 위치는 **앱 내 격자 기반 UI(Canvas/Grid)** 상에 시각적으로 표시되어,
   공간 내에서의 이동 상태를 직관적으로 확인할 수 있습니다.
 
-https://github.com/user-attachments/assets/c209a4ed-920f-41e8-bc5e-850ee23794d7
+https://github.com/user-attachments/assets/5191715b-4a3f-4a6c-b5aa-01c610312158
 
 ---
 
