@@ -6,10 +6,14 @@ BLE 기반 UWB 연결, 거리 측정, 방향 데이터 수신, RTLS 위치 추�
 ---
 
 ## 🔧 요구 사항
-- [UWB 지원 Android 휴대폰](https://blog.naver.com/growdevelopers/223812647964)
+
+### Software
 - Android 14 (API 34) 이상
 - Kotlin 1.9.22 이상
-- 실제 UWB 디바이스 **(Grow Space UWB 제품)**
+
+### Hardware
+- [UWB 지원 Android 휴대폰](https://blog.naver.com/growdevelopers/223812647964)
+- 실제 UWB 디바이스 [(Grow Space UWB 제품)](https://grow-space.io/product/n1-mk-01/)
 
 ---
 
