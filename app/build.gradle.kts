@@ -11,8 +11,8 @@ android {
         applicationId = "com.growspace.testapp"
         minSdk = 34
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 4
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -62,7 +62,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     /// Remote Maven
-    implementation("io.github.freegrowenterprise:SpaceSDK-Android:0.0.2")
+    implementation("io.github.freegrowenterprise:SpaceSDK-Android:0.0.4")
 
     /// Local Maven
 //    implementation("com.growspace.sdk:growspacesdk:1.0.0")
