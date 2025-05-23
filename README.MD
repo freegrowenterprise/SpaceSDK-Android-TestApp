@@ -1,6 +1,6 @@
 # 📡 Space UWB SDK Example App (Android)
 
-이 프로젝트는 **FREEGROW Inc.**의 UWB 제품을 **Android 기기와 연동**하여 사용할 수 있도록 만든 **공식 SDK 예제 앱**입니다.  
+이 프로젝트는 **FREEGROW Inc**의 UWB 제품을 **Android 기기와 연동**하여 사용할 수 있도록 만든 **공식 SDK 예제 앱**입니다.  
 BLE 기반 UWB 연결, 거리 측정, 방향 데이터 수신, RTLS 위치 추정 등 핵심 기능을 직접 테스트할 수 있도록 구성되어 있으며, **직관적인 UI와 실시간 디바이스 상태 시각화 기능을 포함**하고 있습니다.
 
 ---
