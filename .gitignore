@@ -290,3 +290,5 @@ hs_err_pid*
 
 app/key.jks
 key.properties
+
+.vscode
