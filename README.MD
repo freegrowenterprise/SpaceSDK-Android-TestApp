@@ -69,4 +69,5 @@ We specialize in indoor positioning and ultra-wideband (UWB) communication techn
 For technical inquiries or suggestions, feel free to reach out to us:
 
 📮 contact@freegrow.io
+
 🌐 https://grow-space.io
