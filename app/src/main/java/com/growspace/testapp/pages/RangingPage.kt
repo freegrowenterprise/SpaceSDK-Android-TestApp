@@ -5,15 +5,22 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.growspace.sdk.SpaceUwb
@@ -27,7 +34,7 @@ import kotlin.random.Random
 @Composable
 fun RangingPage() {
     val context = LocalContext.current as ComponentActivity
-    val spaceUWB = remember { SpaceUwb("", context, context) }
+    val spaceUWB = remember { SpaceUwb(context, context) }
 
     val currentMaxConnectCount = remember { mutableIntStateOf(4) }
     val deviceInfoList = remember { mutableStateListOf<DeviceInfo>() }
@@ -39,6 +46,7 @@ fun RangingPage() {
     val signalPriority = remember { mutableStateOf(true) }
     val notificationTimer = remember { mutableStateOf<Job?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val delayDisconnectSecLimit = remember { mutableIntStateOf(5) }
 
     fun updateDemoDevices() {
         if (deviceInfoList.isEmpty()) {
@@ -85,7 +93,11 @@ fun RangingPage() {
             },
             onDisconnect = { result ->
                 deviceInfoList.removeIf { it.name == result.deviceName }
-            }
+            },
+            maximumConnectionCount = currentMaxConnectCount.intValue,
+            replacementDistanceThreshold = distanceLimit.floatValue,
+            isConnectStrongestSignalFirst = signalPriority.value,
+            delayDisconnectSecLimit = delayDisconnectSecLimit.intValue
         )
     }
 
@@ -138,9 +150,11 @@ fun RangingPage() {
         }
     }
 
-    Surface(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp)) {
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(
                 "Space UWB Scanner",
@@ -155,6 +169,10 @@ fun RangingPage() {
                     currentMaxConnectCount.value = newValue
                 }
             )
+
+            Spacer(Modifier.height(16.dp))
+
+            DelayInputField(delayDisconnectSecLimit)
 
             Spacer(Modifier.height(16.dp))
 
@@ -189,9 +207,11 @@ fun RangingPage() {
             )
 
             Spacer(Modifier.height(16.dp))
-            Box(modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
                 if (showLoading.value) {
                     Column(
                         Modifier.fillMaxSize(),
@@ -205,9 +225,11 @@ fun RangingPage() {
                 } else if (deviceInfoList.isNotEmpty()) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         deviceInfoList.forEach { device ->
-                            Card(modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Text("Device: ${device.name}")
                                     Text("거리: ${"%.2f".format(device.distance)}m")
@@ -276,6 +298,12 @@ fun RangingPage() {
             }
         )
     }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            stopUwbScan()
+        }
+    }
 }
 
 
@@ -335,3 +363,67 @@ fun MaxConnectionSelector(
         color = Color.Gray
     )
 }
+
+@Composable
+fun DelayInputField(delayDisconnectSecLimit: MutableState<Int>) {
+    val min = 3
+    val max = 10
+    val inputText = remember { mutableStateOf(delayDisconnectSecLimit.value.toString()) }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("지연 (S)", style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.weight(1f))
+
+        Column {
+            IconButton(
+                onClick = {
+                    val newValue = (delayDisconnectSecLimit.value + 1).coerceAtMost(max)
+                    delayDisconnectSecLimit.value = newValue
+                    inputText.value = newValue.toString()
+                },
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "증가")
+            }
+
+            IconButton(
+                onClick = {
+                    val newValue = (delayDisconnectSecLimit.value - 1).coerceAtLeast(min)
+                    delayDisconnectSecLimit.value = newValue
+                    inputText.value = newValue.toString()
+                },
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "감소")
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        OutlinedTextField(
+            value = inputText.value,
+            onValueChange = { newText ->
+                inputText.value = newText
+
+                val number = newText.toIntOrNull()
+                if (number != null) {
+                    val corrected = number.coerceIn(min, max)
+
+                    delayDisconnectSecLimit.value = corrected
+
+                    if (corrected.toString() != newText) {
+                        inputText.value = corrected.toString()
+                    }
+                }
+            },
+            modifier = Modifier.width(100.dp),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
+        )
+    }
+}
+
+//addToStrictGattMap() Too many register gatt interface
+//onClientRegistered() - status=133 clientIf=0
+//BluetoothGatt not initialized or uninitialized characteristic
+//UWB ranging notification received for unexpected device address

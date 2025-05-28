@@ -30,7 +30,7 @@ class SpaceForegroundService: Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         activity = CompanionActivityHolder.activity
         if (activity != null) {
-            spaceUWB = SpaceUwb("", this, activity!!)
+            spaceUWB = SpaceUwb(this, activity!!)
         } else {
             Log.e("SpaceForegroundService", "Activity is null, SpaceUwb 초기화 실패")
         }
