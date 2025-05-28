@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         createNotificationChannel()
         requestPermissions()
-        spaceUWB = SpaceUwb(this, this)
+        spaceUWB = SpaceUwb("",this, this)
         CompanionActivityHolder.activity = this
 
         setContent {
