@@ -49,7 +49,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
     val context = LocalContext.current
     val activity = context as? Activity
     val spaceUWB = remember(context, activity) {
-        activity?.let { SpaceUwb(context, it) }
+        activity?.let { SpaceUwb("", context, it) }
     }
 
     var rowInput by remember { mutableStateOf("5") }

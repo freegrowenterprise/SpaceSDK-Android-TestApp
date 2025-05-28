@@ -27,7 +27,7 @@ import kotlin.random.Random
 @Composable
 fun RangingPage() {
     val context = LocalContext.current as ComponentActivity
-    val spaceUWB = remember { SpaceUwb(context, context) }
+    val spaceUWB = remember { SpaceUwb("", context, context) }
 
     val currentMaxConnectCount = remember { mutableIntStateOf(4) }
     val deviceInfoList = remember { mutableStateListOf<DeviceInfo>() }
