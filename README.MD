@@ -1,74 +1,72 @@
 # 📡 Space UWB SDK Example App (Android)
 
-이 프로젝트는 **FREEGROW Inc**의 UWB 제품을 **Android 기기와 연동**하여 사용할 수 있도록 만든 **공식 SDK 예제 앱**입니다.  
-BLE 기반 UWB 연결, 거리 측정, 방향 데이터 수신, RTLS 위치 추정 등 핵심 기능을 직접 테스트할 수 있도록 구성되어 있으며, **직관적인 UI와 실시간 디바이스 상태 시각화 기능을 포함**하고 있습니다.
+This project is the **official SDK example app** provided by **FREEGROW Inc.**, designed to integrate Grow Space UWB products with Android devices.  
+It enables direct testing of core UWB features such as BLE-based device discovery, distance and direction measurement, and RTLS-based real-time location tracking, all supported with **an intuitive UI and real-time visualization**.
 
 ---
 
-## 🔧 요구 사항
+## 🔧 Requirements
 
 ### Software
-- Android 14 (API 34) 이상
-- Kotlin 1.9.22 이상
+- Android 14 (API 34) or later
+- Kotlin 1.9.22 or later
 
 ### Hardware
-- [UWB 지원 Android 휴대폰](https://blog.naver.com/growdevelopers/223812647964)
-- 실제 UWB 디바이스 [(Grow Space UWB 제품)](https://grow-space.io/product/n1-mk-01/)
+- [UWB-supported Android device](https://blog.naver.com/growdevelopers/223812647964)
+- Physical UWB device [(Grow Space UWB product)](https://grow-space.io/product/n1-mk-01/)
 
 ---
 
-## 🚀 시작하기
+## 🚀 Getting Started
 
-1. 프로젝트 클론:
+1. Clone the repository:
 ```bash
 git clone https://github.com/freegrowenterprise/SpaceSDK-Android-TestApp.git
 ```
 
-2. Android Studio에서 `build.gradle`이 있는 디렉토리를 열기
+2.	Open the project in Android Studio (open the directory containing build.gradle)
 
-3. USB로 실제 기기를 연결하여 실행  
-   > UWB 기능은 Android 에뮬레이터에서 동작하지 않습니다.
+
+3. Connect a physical Android device via USB and run the app  
+   > UWB features do not work on emulators.
 
 ---
 
-## 📦 구성 내용
+## 📦 Included Features
 
-### ✅ SDK 연동 예제
-- FREEGROW UWB SDK(SpaceUwb)를 활용한 장치 연결 흐름
-- BLE를 통한 디바이스 검색 및 UWB Ranging 처리
-- RTLS 알고리즘을 통한 실시간 위치 추정
+### ✅ SDK Integration Example
+- Implements the complete flow using the FREEGROW UWB SDK (SpaceUwb)
+- covers devices via BLE and performs UWB-based ranging
+- putes real-time location using an RTLS algorithm
 
-### ✅ 주요 기능
+### ✅ Key Features
 
-#### 📏 거리 및 방향 측정 기능
-- UWB 장치와 BLE를 통해 연결한 후,
-- 실시간으로 **거리(distance)**, **방위각(azimuth)**, **고도(elevation)** 값을 측정하여 UI에 표시합니다.
-- 연결된 디바이스들은 리스트로 정렬되어 각 장치의 실시간 상태를 확인할 수 있습니다.
+#### 📏 Distance & Direction Measurement
+- After connecting to the UWB device via BLE, the app measures and displays real-time distance, azimuth, and elevation values in the UI.
+- Lists connected devices with their real-time data in the UI
 
 https://github.com/user-attachments/assets/0a675881-3c08-4009-978a-acaaafa0b76d
 
 
 
-#### 🧭 RTLS 격자 기반 위치 표시 기능
-- 각 UWB 앵커 장치의 위치를 좌표값으로 설정한 뒤,
-- RTLS 알고리즘을 통해 **현재 사용자 위치(x, y, z)** 를 실시간으로 계산합니다.
-- 계산된 위치는 **앱 내 격자 기반 UI(Canvas/Grid)** 상에 시각적으로 표시되어,
-  공간 내에서의 이동 상태를 직관적으로 확인할 수 있습니다.
+#### 🧭 RTLS Grid-Based Location Visualization
+- After assigning coordinate values to each UWB anchor device, the app uses an RTLS algorithm to calculate the current user position (x, y, z) in real time.
+- Displays the estimated position in a grid-based UI (Canvas/Grid), visualizing user movement in indoor environments
 
 https://github.com/user-attachments/assets/5191715b-4a3f-4a6c-b5aa-01c610312158
 
 ---
 
-## 🏢 제작
+## 🏢 Developed by
 
 **FREEGROW Inc.**
-실내 측위와 초광대역 통신(UWB) 기술을 바탕으로 한 공간 인식 솔루션을 개발하고 있습니다.
+We specialize in indoor positioning and ultra-wideband (UWB) communication technologies for smart spatial solutions.
 
 ---
 
-## 📫 문의
+## 📫 Contact
 
-기술 문의나 개선 제안은 아래 메일로 연락해주세요.
+For technical inquiries or suggestions, feel free to reach out to us:
 
 📮 contact@freegrow.io
 🌐 https://grow-space.io
