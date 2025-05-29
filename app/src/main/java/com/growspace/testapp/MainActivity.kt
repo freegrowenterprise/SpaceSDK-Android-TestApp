@@ -154,6 +154,9 @@ class MainActivity : ComponentActivity() {
                     devicesInfoList.removeIf { it.name == deviceId }
                     Log.d("UWB_DEBUG", "Device disconnected: $deviceId, Remaining devices: ${devicesInfoList.size}")
                 }
+            },
+            onResult = {
+
             }
         )
     }

@@ -47,6 +47,7 @@ fun RangingPage() {
     val notificationTimer = remember { mutableStateOf<Job?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val delayDisconnectSecLimit = remember { mutableIntStateOf(5) }
+    val showErrorDialog = remember { mutableStateOf(false) }
 
     fun updateDemoDevices() {
         if (deviceInfoList.isEmpty()) {
@@ -97,7 +98,14 @@ fun RangingPage() {
             maximumConnectionCount = currentMaxConnectCount.intValue,
             replacementDistanceThreshold = distanceLimit.floatValue,
             isConnectStrongestSignalFirst = signalPriority.value,
-            delayDisconnectSecLimit = delayDisconnectSecLimit.intValue
+            delayDisconnectSecLimit = delayDisconnectSecLimit.intValue,
+            onResult = {
+                result ->
+                Log.d("111", "startUwbScan: $result")
+                if (!result) {
+                    showErrorDialog.value = true
+                }
+            }
         )
     }
 
@@ -295,6 +303,25 @@ fun RangingPage() {
                     showLoading.value = false
                     isScanning.value = false
                 }) { Text("취소") }
+            }
+        )
+    }
+
+    if (showErrorDialog.value) {
+        AlertDialog(
+            onDismissRequest = {
+                showErrorDialog.value = false
+            },
+            title = {
+                Text("연결 실패")
+            },
+            text = {
+                Text("UWB 장치 연결에 실패했습니다.\n다시 시도해주세요.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog.value = false }) {
+                    Text("확인")
+                }
             }
         )
     }
