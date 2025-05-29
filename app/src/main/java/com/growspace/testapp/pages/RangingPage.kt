@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.growspace.sdk.SpaceUwb
@@ -185,8 +186,14 @@ fun RangingPage() {
             Spacer(Modifier.height(16.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("최대 연결 거리 설정 (m)", style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.weight(1f))
+                Text(
+                    "maximum connection distance (m)",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    )
+
                 OutlinedTextField(
                     value = distanceLimit.value.toString(),
                     onValueChange = {
@@ -202,14 +209,14 @@ fun RangingPage() {
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("신호 강한 순 우선 연결 설정", style = MaterialTheme.typography.bodyLarge)
+                Text("RSSI Priority Connection Settings", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.weight(1f))
                 Switch(
                     checked = signalPriority.value,
                     onCheckedChange = { signalPriority.value = it })
             }
             Text(
-                text = "RSSI가 가장 큰 UWB 장치부터 연결을 시도합니다.",
+                text = "Attempt to connect UWB devices with the largest RSSI sequentially.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )
@@ -228,7 +235,7 @@ fun RangingPage() {
                     ) {
                         CircularProgressIndicator()
                         Spacer(Modifier.height(16.dp))
-                        Text("장치 검색 중...")
+                        Text("Searching for devices...")
                     }
                 } else if (deviceInfoList.isNotEmpty()) {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -240,15 +247,15 @@ fun RangingPage() {
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Text("Device: ${device.name}")
-                                    Text("거리: ${"%.2f".format(device.distance)}m")
-                                    Text("방위각: ${device.azimuth}°, 고도각: ${device.elevation}°")
+                                    Text("distance: ${"%.2f".format(device.distance)}m")
+                                    Text("azimuth: ${device.azimuth}°, elevation: ${device.elevation}°")
                                 }
                             }
                         }
                     }
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("검색된 장치가 없습니다.")
+                        Text("The device was not detected.")
                     }
                 }
             }
@@ -279,13 +286,13 @@ fun RangingPage() {
                 showDemoDialog.value = false
                 showLoading.value = false
             },
-            title = { Text("데모 모드") },
+            title = { Text("Run Experience Mode") },
             text = {
                 Text(
                     buildAnnotatedString {
-                        append("장치를 찾을 수 없습니다. 데모 모드를 실행하시겠습니까?\n\n")
+                        append("Device connection was not detected. Do you want to run the experience version?\n\n")
                         withStyle(style = SpanStyle(color = Color.Gray)) {
-                            append("연결을 계속 시도하려면 창을 닫지 마세요.")
+                            append("Don't close the window to continue trying to connect.")
                         }
                     }
                 )
@@ -295,14 +302,14 @@ fun RangingPage() {
                     isDemoMode.value = true
                     showDemoDialog.value = false
                     showLoading.value = false
-                }) { Text("확인") }
+                }) { Text("Ok") }
             },
             dismissButton = {
                 Button(onClick = {
                     showDemoDialog.value = false
                     showLoading.value = false
                     isScanning.value = false
-                }) { Text("취소") }
+                }) { Text("Cancel") }
             }
         )
     }
@@ -313,14 +320,14 @@ fun RangingPage() {
                 showErrorDialog.value = false
             },
             title = {
-                Text("연결 실패")
+                Text("Connection failed")
             },
             text = {
-                Text("UWB 장치 연결에 실패했습니다.\n다시 시도해주세요.")
+                Text("UWB device connection failed.\nPlease try again.")
             },
             confirmButton = {
                 TextButton(onClick = { showErrorDialog.value = false }) {
-                    Text("확인")
+                    Text("Ok")
                 }
             }
         )
@@ -347,7 +354,7 @@ fun MaxConnectionSelector(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text("최대 연결 개수 설정", style = MaterialTheme.typography.bodyLarge)
+        Text("maximum connections", style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.weight(1f))
 
         ExposedDropdownMenuBox(
@@ -373,7 +380,7 @@ fun MaxConnectionSelector(
             ) {
                 options.forEach { count ->
                     DropdownMenuItem(
-                        text = { Text("$count 개") },
+                        text = { Text("$count") },
                         onClick = {
                             onValueChange(count)
                             expanded = false
@@ -385,7 +392,7 @@ fun MaxConnectionSelector(
     }
 
     Text(
-        text = "7개 이상 동시 연결 시 OS 내부적으로 충돌이 발생합니다.",
+        text = "When more than seven concurrent connections occur, the OS internally collides.",
         style = MaterialTheme.typography.bodySmall,
         color = Color.Gray
     )
@@ -398,8 +405,13 @@ fun DelayInputField(delayDisconnectSecLimit: MutableState<Int>) {
     val inputText = remember { mutableStateOf(delayDisconnectSecLimit.value.toString()) }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("지연 (S)", style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.weight(1f))
+        Text(
+            "Set automatic deletion time in case of delay (S)",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+            )
 
         Column {
             IconButton(
@@ -410,7 +422,7 @@ fun DelayInputField(delayDisconnectSecLimit: MutableState<Int>) {
                 },
                 modifier = Modifier.size(24.dp)
             ) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "증가")
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase")
             }
 
             IconButton(
@@ -421,7 +433,7 @@ fun DelayInputField(delayDisconnectSecLimit: MutableState<Int>) {
                 },
                 modifier = Modifier.size(24.dp)
             ) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "감소")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Decrease")
             }
         }
 

@@ -74,7 +74,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
 
     val rtlsPoint = viewModel.currentRtlsLocation
     val allPoints: List<Pair<String, Offset>> = remember(rtlsPoint, points) {
-        if (rtlsPoint != null) points + ("내 위치" to Offset(
+        if (rtlsPoint != null) points + ("My position" to Offset(
             rtlsPoint.y,
             rtlsPoint.x
         ))
@@ -100,7 +100,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 navController.navigate("uwbSetting")
             }
         ) {
-            Text("UWB 장비 위치 설정")
+            Text("UWB equipment positioning")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -114,7 +114,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 onValueChange = {
                     if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 10) rowInput = it
                 },
-                label = { Text("세로 (최대 10)") },
+                label = { Text("vertical (max 10)") },
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
@@ -126,7 +126,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 onValueChange = {
                     if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 10) columnInput = it
                 },
-                label = { Text("가로 (최대 10)") },
+                label = { Text("horiziontal (max 10)") },
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
@@ -138,7 +138,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 columnCount = col
                 showGrid.value = true
             }) {
-                Text("설정")
+                Text("Set")
             }
         }
 
@@ -149,7 +149,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
             horizontalArrangement = Arrangement.Start
         ) {
             Text(
-                "왼쪽 위 기준 (0, 0)   단위 : m",
+                "Above left (0, 0)   Unit : m",
                 style = MaterialTheme.typography.bodyLarge,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -186,14 +186,14 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "위치 측정 중...",
+                    text = "Positioning...",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
         } else {
             Column {
-                Text("실시간 거리 정보", style = MaterialTheme.typography.titleMedium)
+                Text("Real-time Distance Information", style = MaterialTheme.typography.titleMedium)
 
                 distances.forEach { (deviceName, distance) ->
                     Text("[$deviceName] → ${String.format("%.2f", distance)} m")
@@ -213,12 +213,12 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 onClick = {
                     spaceUWB?.stopUwbRanging()
                 }) {
-                Text("위치 확인 중지")
+                Text("Stop")
             }
             Button(
                 onClick = {
                     if (hasNoCoordinates) {
-                        Toast.makeText(context, "UWB 장비 위치 설정 먼저 해주세요.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Please set the location of UWB equipment first.", Toast.LENGTH_SHORT).show()
                     } else {
                         isLoading.value = true
 
@@ -267,7 +267,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                     ButtonDefaults.buttonColors()
                 }
             ) {
-                Text("위치 확인 시작")
+                Text("Start RTLS")
             }
         }
     }

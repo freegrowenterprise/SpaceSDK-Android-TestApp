@@ -106,7 +106,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text("BLE 스캔 페이지")
+        Text("BLE Scan Page")
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -116,7 +116,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                 modifier = Modifier.weight(1f)
             ) {
-                Text("스캔 중지")
+                Text("Stop")
             }
 
             Button(
@@ -126,13 +126,13 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                 },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("스캔 시작")
+                Text("Start BLE Scan")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("발견된 장치: ${devices.size}개")
+        Text("Discovered Devices: ${devices.size}")
 
         Column(
             modifier = Modifier
@@ -150,7 +150,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                         .padding(vertical = 4.dp),
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text("이름: $name")
+                        Text("name: $name")
                         Text("RSSI: ${result.rssi}")
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -168,7 +168,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                                         coordinates[name] = Offset(x, coordinates[name]?.y ?: 0f)
                                     }
                                 },
-                                label = { Text("X 좌표") },
+                                label = { Text("X Coordinates") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true
                             )
@@ -182,7 +182,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                                         coordinates[name] = Offset(coordinates[name]?.x ?: 0f, y)
                                     }
                                 },
-                                label = { Text("Y 좌표") },
+                                label = { Text("Y Coordinates") },
                                 modifier = Modifier.weight(1f),
                                 singleLine = true
                             )
@@ -201,12 +201,12 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                     Log.d("SAVE", "[$name] -> X=${coord.x}, Y=${coord.y}")
                 }
 
-                Toast.makeText(context, "저장 완료", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Save complete", Toast.LENGTH_SHORT).show()
                 backDispatcher?.onBackPressed()
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("저장")
+            Text("Save")
         }
     }
 }
