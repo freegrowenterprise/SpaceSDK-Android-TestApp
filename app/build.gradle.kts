@@ -62,7 +62,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     /// Remote Maven
-     implementation("io.github.freegrowenterprise:SpaceSDK-Android:0.0.5")
+     implementation("io.github.freegrowenterprise:SpaceSDK-Android:0.0.6")
 
     /// Local Maven
 //   implementation("com.growspace.sdk:growspacesdk:1.0.0")
