@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.growspace.testapp.pages.check_uwb.CheckAzimuthElevationPage
 import com.growspace.testapp.pages.rtls.DeviceCoordinateViewModel
 import com.growspace.testapp.pages.rtls.RTLSPage
 
@@ -20,5 +21,6 @@ fun AppNavHost() {
         composable("ranging") { RangingPage() }
         composable("rtls") { RTLSPage(navController, viewModel = viewModel) }
         composable("uwbSetting") { UwbSettingPage(viewModel = viewModel) }
+        composable("check") { CheckAzimuthElevationPage() }
     }
 }
