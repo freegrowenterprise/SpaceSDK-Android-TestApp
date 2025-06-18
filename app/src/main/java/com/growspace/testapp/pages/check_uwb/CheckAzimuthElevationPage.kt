@@ -63,9 +63,9 @@ fun CheckAzimuthElevationPage() {
 @Composable
 fun FeatureSupportCard(label: String, isSupported: Boolean?) {
     val (emoji, desc, color) = when (isSupported) {
-        true -> Triple("✅", "Supported", Color(0xFF2E7D32))       // 짙은 녹색
-        false -> Triple("❌", "Not Supported", Color(0xFFD32F2F))   // 짙은 빨간색
-        null -> Triple("⏳", "Checking...", Color(0xFF757575))      // 중간 회색
+        true -> Triple("✅", "Supported", Color(0xFF2E7D32))
+        false -> Triple("❌", "Not Supported", Color(0xFFD32F2F))
+        null -> Triple("⏳", "Checking...", Color(0xFF757575))
     }
 
     Card(
@@ -73,7 +73,7 @@ fun FeatureSupportCard(label: String, isSupported: Boolean?) {
             .fillMaxWidth()
             .padding(horizontal = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF9F9F9) // 밝은 회색 배경
+            containerColor = Color(0xFFF9F9F9)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
