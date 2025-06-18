@@ -14,44 +14,23 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.growspace.sdk.SpaceUwb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
-import android.os.PowerManager
-import android.provider.Settings
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Color
 import com.growspace.testapp.model.DeviceInfo
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import kotlinx.coroutines.delay
-import kotlin.random.Random
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import androidx.activity.viewModels
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.growspace.testapp.pages.AppNavHost
@@ -61,14 +40,9 @@ import kotlinx.coroutines.isActive
 data class RssiTime(val rssi: Int, val time: Long)
 
 class MainActivity : ComponentActivity() {
-    private val bluetoothAdapter: BluetoothAdapter? by lazy {
-        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothManager.adapter
-    }
     private var devicesInfoList = mutableStateListOf<DeviceInfo>()
     private var showLoading = mutableStateOf(false)
 
-    private val apiKey = "API-KEY"
     private lateinit var spaceUWB: SpaceUwb
 
     private val CustomColorScheme = lightColorScheme(

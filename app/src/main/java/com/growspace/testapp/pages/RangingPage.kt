@@ -1,7 +1,15 @@
 package com.growspace.testapp.pages
 
+import android.Manifest
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.compose.material3.ExposedDropdownMenuBox
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import com.growspace.sdk.SpaceUwb
 import com.growspace.testapp.model.DeviceInfo
 import kotlinx.coroutines.Job
@@ -76,6 +85,28 @@ fun RangingPage() {
     }
 
     fun startUwbScan() {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val bluetoothAdapter = bluetoothManager?.adapter
+
+        if (bluetoothAdapter == null) {
+            Toast.makeText(context, "This device does not support Bluetooth.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!bluetoothAdapter.isEnabled) {
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            context.startActivity(enableBtIntent)
+
+            return
+        }
+
         deviceInfoList.clear()
         showLoading.value = true
         isScanning.value = true
@@ -100,9 +131,7 @@ fun RangingPage() {
             replacementDistanceThreshold = distanceLimit.floatValue,
             isConnectStrongestSignalFirst = signalPriority.value,
             delayDisconnectSecLimit = delayDisconnectSecLimit.intValue,
-            onResult = {
-                result ->
-                Log.d("111", "startUwbScan: $result")
+            onResult = { result ->
                 if (!result) {
                     showErrorDialog.value = true
                 }

@@ -34,6 +34,16 @@ fun HomeScreen(navController: NavHostController) {
         )
         Spacer(modifier = Modifier.height(40.dp))
         Button(
+            onClick = { navController.navigate("check") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Text("Check azimuth, elevation", style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Button(
             onClick = { navController.navigate("ranging") },
             modifier = Modifier
                 .fillMaxWidth()
