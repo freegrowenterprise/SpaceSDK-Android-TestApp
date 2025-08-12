@@ -51,8 +51,8 @@ fun RangingPage() {
     val showLoading = remember { mutableStateOf(false) }
     val isScanning = remember { mutableStateOf(false) }
     val isDemoMode = remember { mutableStateOf(false) }
-    val showDemoDialog = remember { mutableStateOf(false) }
-    val distanceLimit = remember { mutableFloatStateOf(8.0f) }
+//    val showDemoDialog = remember { mutableStateOf(false) }
+    val distanceLimit = remember { mutableFloatStateOf(80.0f) }
     val signalPriority = remember { mutableStateOf(true) }
     val notificationTimer = remember { mutableStateOf<Job?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -162,12 +162,12 @@ fun RangingPage() {
         notificationTimer.value = null
     }
 
-    LaunchedEffect(showLoading.value, isScanning.value) {
-        if (showLoading.value && isScanning.value) {
-            delay(10000)
-            if (deviceInfoList.isEmpty()) showDemoDialog.value = true
-        }
-    }
+//    LaunchedEffect(showLoading.value, isScanning.value) {
+//        if (showLoading.value && isScanning.value) {
+//            delay(10000)
+//            if (deviceInfoList.isEmpty()) showDemoDialog.value = true
+//        }
+//    }
 
     LaunchedEffect(isDemoMode.value) {
         while (isDemoMode.value) {
@@ -180,13 +180,13 @@ fun RangingPage() {
         if (isScanning.value) startNotificationTimer() else stopNotificationTimer()
     }
 
-    LaunchedEffect(deviceInfoList.size) {
-        if (showDemoDialog.value && deviceInfoList.isNotEmpty()) {
-            showDemoDialog.value = false
-            isDemoMode.value = false
-            showLoading.value = false
-        }
-    }
+//    LaunchedEffect(deviceInfoList.size) {
+//        if (showDemoDialog.value && deviceInfoList.isNotEmpty()) {
+//            showDemoDialog.value = false
+//            isDemoMode.value = false
+//            showLoading.value = false
+//        }
+//    }
 
     Surface(
         modifier = Modifier
@@ -309,39 +309,39 @@ fun RangingPage() {
         }
     }
 
-    if (showDemoDialog.value) {
-        AlertDialog(
-            onDismissRequest = {
-                showDemoDialog.value = false
-                showLoading.value = false
-            },
-            title = { Text("Run Experience Mode") },
-            text = {
-                Text(
-                    buildAnnotatedString {
-                        append("Device connection was not detected. Do you want to run the experience version?\n\n")
-                        withStyle(style = SpanStyle(color = Color.Gray)) {
-                            append("Don't close the window to continue trying to connect.")
-                        }
-                    }
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    isDemoMode.value = true
-                    showDemoDialog.value = false
-                    showLoading.value = false
-                }) { Text("Ok") }
-            },
-            dismissButton = {
-                Button(onClick = {
-                    showDemoDialog.value = false
-                    showLoading.value = false
-                    isScanning.value = false
-                }) { Text("Cancel") }
-            }
-        )
-    }
+//    if (showDemoDialog.value) {
+//        AlertDialog(
+//            onDismissRequest = {
+//                showDemoDialog.value = false
+//                showLoading.value = false
+//            },
+//            title = { Text("Run Experience Mode") },
+//            text = {
+//                Text(
+//                    buildAnnotatedString {
+//                        append("Device connection was not detected. Do you want to run the experience version?\n\n")
+//                        withStyle(style = SpanStyle(color = Color.Gray)) {
+//                            append("Don't close the window to continue trying to connect.")
+//                        }
+//                    }
+//                )
+//            },
+//            confirmButton = {
+//                Button(onClick = {
+//                    isDemoMode.value = true
+//                    showDemoDialog.value = false
+//                    showLoading.value = false
+//                }) { Text("Ok") }
+//            },
+//            dismissButton = {
+//                Button(onClick = {
+//                    showDemoDialog.value = false
+//                    showLoading.value = false
+//                    isScanning.value = false
+//                }) { Text("Cancel") }
+//            }
+//        )
+//    }
 
     if (showErrorDialog.value) {
         AlertDialog(
