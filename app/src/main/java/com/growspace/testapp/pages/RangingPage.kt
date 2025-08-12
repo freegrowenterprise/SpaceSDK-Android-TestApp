@@ -58,6 +58,7 @@ fun RangingPage() {
     val coroutineScope = rememberCoroutineScope()
     val delayDisconnectSecLimit = remember { mutableIntStateOf(5) }
     val showErrorDialog = remember { mutableStateOf(false) }
+    val isButtonLoading = remember { mutableStateOf(false) }
 
     fun updateDemoDevices() {
         if (deviceInfoList.isEmpty()) {
@@ -85,11 +86,14 @@ fun RangingPage() {
     }
 
     fun startUwbScan() {
+        isButtonLoading.value = true
+        
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val bluetoothAdapter = bluetoothManager?.adapter
 
         if (bluetoothAdapter == null) {
             Toast.makeText(context, "This device does not support Bluetooth.", Toast.LENGTH_SHORT).show()
+            isButtonLoading.value = false
             return
         }
 
@@ -100,10 +104,11 @@ fun RangingPage() {
                     Manifest.permission.BLUETOOTH_CONNECT
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
+                isButtonLoading.value = false
                 return
             }
             context.startActivity(enableBtIntent)
-
+            isButtonLoading.value = false
             return
         }
 
@@ -115,6 +120,7 @@ fun RangingPage() {
         spaceUWB.startUwbRanging(
             onUpdate = { result ->
                 showLoading.value = false
+                isButtonLoading.value = false
                 val device = DeviceInfo(
                     name = result.deviceName,
                     distance = result.distance,
@@ -132,6 +138,7 @@ fun RangingPage() {
             isConnectStrongestSignalFirst = signalPriority.value,
             delayDisconnectSecLimit = delayDisconnectSecLimit.intValue,
             onResult = { result ->
+                isButtonLoading.value = false
                 if (!result) {
                     showErrorDialog.value = true
                 }
@@ -140,10 +147,15 @@ fun RangingPage() {
     }
 
     fun stopUwbScan() {
+        isButtonLoading.value = true
         isScanning.value = false
         isDemoMode.value = false
         showLoading.value = false
-        spaceUWB.stopUwbRanging {}
+        spaceUWB.stopUwbRanging (
+            onComplete = { result ->
+                isButtonLoading.value = false
+            }
+        )
         notificationTimer.value?.cancel()
     }
 
@@ -295,15 +307,33 @@ fun RangingPage() {
             ) {
                 Button(
                     onClick = { stopUwbScan() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = !isButtonLoading.value
                 ) {
-                    Text("Stop")
+                    if (isButtonLoading.value && !isScanning.value) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Stop")
+                    }
                 }
                 Button(
                     onClick = { startUwbScan() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = !isButtonLoading.value
                 ) {
-                    Text("Start")
+                    if (isButtonLoading.value && isScanning.value) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Start")
+                    }
                 }
             }
         }
