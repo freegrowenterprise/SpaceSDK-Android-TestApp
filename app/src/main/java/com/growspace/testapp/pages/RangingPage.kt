@@ -154,7 +154,8 @@ fun RangingPage() {
         spaceUWB.stopUwbRanging (
             onComplete = { result ->
                 isButtonLoading.value = false
-            }
+            },
+            delayDisconnectSecLimit = delayDisconnectSecLimit.intValue
         )
         notificationTimer.value?.cancel()
     }
@@ -308,7 +309,7 @@ fun RangingPage() {
                 Button(
                     onClick = { stopUwbScan() },
                     modifier = Modifier.weight(1f),
-                    enabled = !isButtonLoading.value
+                    enabled = !isButtonLoading.value && isScanning.value
                 ) {
                     if (isButtonLoading.value && !isScanning.value) {
                         CircularProgressIndicator(
@@ -323,7 +324,7 @@ fun RangingPage() {
                 Button(
                     onClick = { startUwbScan() },
                     modifier = Modifier.weight(1f),
-                    enabled = !isButtonLoading.value
+                    enabled = !isButtonLoading.value && !isScanning.value
                 ) {
                     if (isButtonLoading.value && isScanning.value) {
                         CircularProgressIndicator(
