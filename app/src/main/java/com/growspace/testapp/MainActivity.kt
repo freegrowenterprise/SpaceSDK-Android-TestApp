@@ -36,6 +36,12 @@ import androidx.core.app.NotificationManagerCompat
 import com.growspace.testapp.pages.AppNavHost
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.safeDrawing
 
 data class RssiTime(val rssi: Int, val time: Long)
 
@@ -64,6 +70,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         createNotificationChannel()
         requestPermissions()
         spaceUWB = SpaceUwb(this, this)
@@ -73,7 +80,11 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(
                 colorScheme = CustomColorScheme
             ) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(WindowInsets.safeDrawing.asPaddingValues())
+                ) {
                     AppNavHost()
                 }
             }
