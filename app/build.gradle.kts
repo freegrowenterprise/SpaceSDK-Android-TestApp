@@ -11,7 +11,7 @@ android {
         applicationId = "com.growspace.testapp"
         minSdk = 35
         targetSdk = 35
-        versionCode = 8
+        versionCode = 9
         versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
