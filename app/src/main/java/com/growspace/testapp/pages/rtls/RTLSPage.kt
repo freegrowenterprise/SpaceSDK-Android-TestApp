@@ -210,6 +210,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
             Button(
                 modifier = Modifier
                     .padding(vertical = 8.dp),
+                enabled = !isLoading.value,
                 onClick = {
                     spaceUWB?.stopUwbRanging()
                 }) {
@@ -261,7 +262,8 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 },
                 modifier = Modifier
                     .padding(vertical = 8.dp),
-                colors = if (hasNoCoordinates) {
+                enabled = !isLoading.value && !hasNoCoordinates,
+                colors = if (hasNoCoordinates || isLoading.value) {
                     ButtonDefaults.buttonColors(containerColor = Color.Gray)
                 } else {
                     ButtonDefaults.buttonColors()
