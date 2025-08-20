@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace = "com.growspace.testapp"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.growspace.testapp"
-        minSdk = 35
+        minSdk = 34
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.0.7"
+        versionCode = 12
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
