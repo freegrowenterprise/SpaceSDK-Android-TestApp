@@ -8,7 +8,7 @@ It enables direct testing of core UWB features such as BLE-based device discover
 ## 🔧 Requirements
 
 ### Software
-- Android 15 (API 35) or later
+- Android 14 (API 34) or later
 - Kotlin 1.9.22 or later
 
 ### Hardware
