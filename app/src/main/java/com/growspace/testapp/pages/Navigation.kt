@@ -22,5 +22,6 @@ fun AppNavHost() {
         composable("rtls") { RTLSPage(navController, viewModel = viewModel) }
         composable("uwbSetting") { UwbSettingPage(viewModel = viewModel) }
         composable("check") { CheckAzimuthElevationPage() }
+        composable("mqttSetting") { MQTTSettingPage(navController) }
     }
 }

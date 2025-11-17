@@ -73,9 +73,17 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                     if (deviceName.startsWith("FGU-") &&
                         devices.none { d -> d.device.address == it.device.address }) {
                         devices.add(it)
-                        viewModel.deviceCoordinates[deviceName]?.let { coord ->
-                            coordinates[deviceName] = coord
+
+                        // 고정된 앵커 위치 설정
+                        val fixedCoord = when (deviceName) {
+                            "FGU-1096" -> Offset(1f, 1f)
+                            "FGU-1097" -> Offset(21f, 1f)
+                            "FGU-1098" -> Offset(21f, 21f)
+                            "FGU-1099" -> Offset(1f, 21f)
+                            else -> viewModel.deviceCoordinates[deviceName] ?: Offset(0f, 0f)
                         }
+                        coordinates[deviceName] = fixedCoord
+                        viewModel.setCoordinate(deviceName, fixedCoord.x, fixedCoord.y)
                     }
                 }
             }

@@ -2,47 +2,30 @@ package com.growspace.testapp.pages.rtls
 
 import android.app.Activity
 import android.util.Log
-import android.widget.Toast
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.*
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.growspace.sdk.SpaceUwb
 import com.growspace.sdk.rtls.filter.RtlsFilterType
+import com.growspace.testapp.MQTTManager
 
 @Composable
 fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewModel) {
@@ -52,176 +35,154 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
         activity?.let { SpaceUwb(context, it) }
     }
 
-    var rowInput by remember { mutableStateOf("5") }
-    var columnInput by remember { mutableStateOf("5") }
+    val mqttManager = remember(context) { MQTTManager(context) }
+    val deviceId = remember {
+        android.provider.Settings.Secure.getString(
+            context.contentResolver,
+            android.provider.Settings.Secure.ANDROID_ID
+        ) ?: "Android-Unknown"
+    }
 
-    var rowCount by remember { mutableStateOf(5) }
-    var columnCount by remember { mutableStateOf(5) }
+    var mqttConnected by remember { mutableStateOf(false) }
 
-    val showGrid = remember { mutableStateOf(true) }
+    // MQTT 자동 연결
+    LaunchedEffect(mqttManager) {
+        mqttManager.connect(
+            host = "3.38.52.15",
+            port = 1883,
+            username = "freegrow",
+            password = "gogrow!",
+            onSuccess = {
+                mqttConnected = true
+                Log.d("RTLS", "✅ MQTT Connected")
+            },
+            onFailure = { error ->
+                mqttConnected = false
+                Log.e("RTLS", "❌ MQTT Connection failed: ${error.message}")
+            }
+        )
+    }
 
-    val points by remember(viewModel.deviceCoordinates) {
-        derivedStateOf {
-            viewModel.deviceCoordinates
-                .filterKeys { it.startsWith("FGU-") }
-                .mapNotNull { (name, coord) ->
-                    val x = coord.x
-                    val y = coord.y
-                    name to Offset(y, x)
-                }
+    DisposableEffect(Unit) {
+        onDispose {
+            mqttManager.disconnect()
         }
     }
 
-    val rtlsPoint = viewModel.currentRtlsLocation
-    val allPoints: List<Pair<String, Offset>> = remember(rtlsPoint, points) {
-        if (rtlsPoint != null) points + ("My position" to Offset(
-            rtlsPoint.y,
-            rtlsPoint.x
-        ))
-        else points
-    }
-    val isLoading = remember { mutableStateOf(false) }
+    var isRunning by remember { mutableStateOf(false) }
+    var statusText by remember { mutableStateOf("Ready to start UWB") }
+    var distanceText by remember { mutableStateOf("Distance: -") }
+    var coordinateText by remember { mutableStateOf("Coordinate: -") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("RTLS Example", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(40.dp))
+        // Title
+        Text(
+            text = "RTLS",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
 
+        // UWB Equipment Positioning Button
         Button(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp),
             onClick = {
                 navController.navigate("uwbSetting")
-            }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
         ) {
-            Text("UWB equipment positioning")
+            Text("UWB equipment positioning", color = Color.White)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = rowInput,
-                onValueChange = {
-                    if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 10) rowInput = it
-                },
-                label = { Text("vertical (max 10)") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-
-            Text(text = "X", style = MaterialTheme.typography.bodyLarge)
-
-            OutlinedTextField(
-                value = columnInput,
-                onValueChange = {
-                    if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 10) columnInput = it
-                },
-                label = { Text("horiziontal (max 10)") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-
-            Button(onClick = {
-                val row = rowInput.toIntOrNull()?.coerceIn(1, 10) ?: rowCount
-                val col = columnInput.toIntOrNull()?.coerceIn(1, 10) ?: columnCount
-                rowCount = row
-                columnCount = col
-                showGrid.value = true
-            }) {
-                Text("Set")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
+        // Status
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isRunning && distanceText == "Distance: -") {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = statusText,
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
+        }
+
+        // Distance Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                .padding(12.dp)
         ) {
             Text(
-                "Above left (0, 0)   Unit : m",
-                style = MaterialTheme.typography.bodyLarge,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                text = distanceText,
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 14.sp,
+                color = Color.DarkGray
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (showGrid.value) {
-            GridWithDots(
-                rowCount = rowCount,
-                columnCount = columnCount,
-                points = allPoints
+        // Coordinate Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                .padding(12.dp)
+        ) {
+            Text(
+                text = coordinateText,
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 14.sp,
+                color = Color.DarkGray
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.weight(1f))
 
-        val hasNoCoordinates = viewModel.deviceCoordinates
-            .filterKeys { it.startsWith("FGU-") }
-            .isEmpty()
-
-        val distances = viewModel.anchorDistances
-
-        if (isLoading.value) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Positioning...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-            }
-        } else {
-            Column {
-                Text("Real-time Distance Information", style = MaterialTheme.typography.titleMedium)
-
-                distances.forEach { (deviceName, distance) ->
-                    Text("[$deviceName] → ${String.format("%.2f", distance)} m")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
+        // Control Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Stop Button
             Button(
-                modifier = Modifier
-                    .padding(vertical = 8.dp),
-                enabled = !isLoading.value,
                 onClick = {
+                    isRunning = false
+                    statusText = "Stopped"
+                    distanceText = "Distance: -"
+                    coordinateText = "Coordinate: -"
                     spaceUWB?.stopUwbRanging()
-                }) {
-                Text("Stop")
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray)
+            ) {
+                Text("Stop", color = Color.White)
             }
+
+            // Start Button
             Button(
                 onClick = {
+                    val hasNoCoordinates = viewModel.deviceCoordinates
+                        .filterKeys { it.startsWith("FGU-") }
+                        .isEmpty()
+
                     if (hasNoCoordinates) {
                         Toast.makeText(context, "Please set the location of UWB equipment first.", Toast.LENGTH_SHORT).show()
                     } else {
-                        isLoading.value = true
+                        isRunning = true
+                        statusText = "Starting..."
 
                         val anchorPositionMap = viewModel.deviceCoordinates
                             .filterKeys { it.startsWith("FGU-") }
@@ -240,100 +201,47 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                             isConnectStrongestSignalFirst = true,
                             filterType = RtlsFilterType.MOVING_AVERAGE,
                             onResult = { result ->
-                                Log.d("RTLS", "결과 위치: ${result.x}, ${result.y}, ${result.z}")
+                                coordinateText = String.format(
+                                    "Coordinate:\n  X: %.2f m\n  Y: %.2f m",
+                                    result.x,
+                                    result.y
+                                )
+                                viewModel.setCurrentLocation(Offset(result.x.toFloat(), result.y.toFloat()))
+                                statusText = "UWB Running..."
 
-                                val x = result.x.toFloat()
-                                val y = result.y.toFloat()
-
-                                viewModel.setCurrentLocation(Offset(x, y))
-                                isLoading.value = false
+                                // MQTT: 실시간 좌표 전송
+                                mqttManager.publishCoordinate(
+                                    deviceId = deviceId,
+                                    x = result.x,
+                                    y = result.y
+                                )
                             },
                             onFail = { error ->
-                                Log.e("RTLS", "실패: $error")
-                                isLoading.value = false
+                                Log.e("RTLS", "Failed: $error")
+                                statusText = "Error: $error"
                             },
                             onDeviceRanging = { distanceMap ->
-                                Log.d("RTLS", "장치 거리: $distanceMap")
-                                viewModel.updateAnchorDistances(distanceMap)
-                                isLoading.value = false
+                                val distanceLines = distanceMap.map { (name, distance) ->
+                                    "  [$name] → ${String.format("%.2f", distance)}m"
+                                }.joinToString("\n")
+                                distanceText = "Distance:\n$distanceLines"
+
+                                // MQTT: 앵커 간 거리 전송 (각 앵커마다 개별 전송)
+                                distanceMap.forEach { (anchorId, distance) ->
+                                    mqttManager.publishDistance(
+                                        deviceId = deviceId,
+                                        anchorId = anchorId,
+                                        distance = distance
+                                    )
+                                }
                             }
                         )
                     }
                 },
-                modifier = Modifier
-                    .padding(vertical = 8.dp),
-                enabled = !isLoading.value && !hasNoCoordinates,
-                colors = if (hasNoCoordinates || isLoading.value) {
-                    ButtonDefaults.buttonColors(containerColor = Color.Gray)
-                } else {
-                    ButtonDefaults.buttonColors()
-                }
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
             ) {
-                Text("Start RTLS")
-            }
-        }
-    }
-}
-
-@Composable
-fun GridWithDots(
-    rowCount: Int,
-    columnCount: Int,
-    points: List<Pair<String, Offset>>
-) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-            .border(1.dp, Color.Gray)
-    ) {
-        val cellSize = maxWidth / columnCount
-        val totalHeight = cellSize * rowCount
-        val density = LocalDensity.current
-
-        Box(
-            modifier = Modifier
-                .width(maxWidth * 0.95f)
-                .height(totalHeight)
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val cellSizePx = with(density) { cellSize.toPx() }
-
-                for (row in 0 until rowCount) {
-                    for (col in 0 until columnCount) {
-                        val left = col * cellSizePx
-                        val top = row * cellSizePx
-                        drawRect(
-                            color = Color.Black,
-                            topLeft = Offset(left, top),
-                            size = Size(cellSizePx, cellSizePx),
-                            style = Stroke(width = 1f)
-                        )
-                    }
-                }
-
-                points.forEach { (name, point) ->
-                    val x = point.y * cellSizePx
-                    val y = point.x * cellSizePx
-
-                    drawCircle(
-                        color = Color.Red,
-                        radius = 10f,
-                        center = Offset(x, y)
-                    )
-
-                    drawContext.canvas.nativeCanvas.drawText(
-                        name,
-                        x,
-                        y - 12f,
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.BLACK
-                            textAlign = android.graphics.Paint.Align.CENTER
-                            textSize = 24f
-                            isAntiAlias = true
-                        }
-                    )
-                }
+                Text("Start", color = Color.White)
             }
         }
     }

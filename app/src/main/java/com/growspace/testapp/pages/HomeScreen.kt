@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun HomeScreen(navController: NavHostController) {
@@ -63,6 +65,17 @@ fun HomeScreen(navController: NavHostController) {
 
             ) {
             Text("RTLS Page", style = MaterialTheme.typography.titleMedium)
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Button(
+            onClick = { navController.navigate("mqttSetting") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+        ) {
+            Text("MQTT Settings", style = MaterialTheme.typography.titleMedium)
         }
     }
 }

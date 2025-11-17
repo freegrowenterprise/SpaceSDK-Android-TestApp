@@ -57,6 +57,10 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice"
             tools:ignore="ForegroundServicePermission" />
+
+        <!-- MQTT Service -->
+        <service android:name="org.eclipse.paho.android.service.MqttService" />
+
         <meta-data
             android:name="com.google.ar.core"
             android:value="required" />

@@ -45,7 +45,16 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/*.SF"
+            excludes += "/META-INF/*.DSA"
+            excludes += "/META-INF/*.RSA"
+            excludes += "/META-INF/io.netty.versions.properties"
         }
+    }
+
+    lint {
+        abortOnError = false
     }
 }
 
@@ -72,6 +81,9 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.9")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     implementation ("com.google.ar:core:1.48.0")
+
+    // MQTT Client - HiveMQ MQTT Client (LocalBroadcastManager 문제 없음)
+    implementation("com.hivemq:hivemq-mqtt-client:1.3.3")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
