@@ -26,6 +26,8 @@ import androidx.navigation.NavHostController
 import com.growspace.sdk.SpaceUwb
 import com.growspace.sdk.rtls.filter.RtlsFilterType
 import com.growspace.testapp.MQTTManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewModel) {
@@ -73,6 +75,11 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
     var statusText by remember { mutableStateOf("Ready to start UWB") }
     var distanceText by remember { mutableStateOf("Distance: -") }
     var coordinateText by remember { mutableStateOf("Coordinate: -") }
+
+    // 앵커별 마지막 업데이트 시각 추적
+    val anchorLastUpdateTime = remember { mutableStateMapOf<String, Long>() }
+    val currentDistanceMap = remember { mutableStateMapOf<String, Float>() }
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -163,6 +170,8 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                     statusText = "Stopped"
                     distanceText = "Distance: -"
                     coordinateText = "Coordinate: -"
+                    anchorLastUpdateTime.clear()
+                    currentDistanceMap.clear()
                     spaceUWB?.stopUwbRanging()
                 },
                 modifier = Modifier.weight(1f),
@@ -183,6 +192,8 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                     } else {
                         isRunning = true
                         statusText = "Starting..."
+                        anchorLastUpdateTime.clear()
+                        currentDistanceMap.clear()
 
                         val anchorPositionMap = viewModel.deviceCoordinates
                             .filterKeys { it.startsWith("FGU-") }
@@ -193,35 +204,70 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                             }
                             .toMap()
 
+                        // 1초마다 오래된 앵커 제거하는 코루틴 시작
+                        coroutineScope.launch {
+                            while (isRunning) {
+                                delay(1000)
+                                val now = System.currentTimeMillis()
+
+                                // 1초 이상 업데이트 안 된 앵커 제거
+                                val staleAnchors = anchorLastUpdateTime.filter { (_, lastUpdate) ->
+                                    now - lastUpdate > 1000
+                                }.keys.toList()
+
+                                staleAnchors.forEach { anchorId ->
+                                    anchorLastUpdateTime.remove(anchorId)
+                                    currentDistanceMap.remove(anchorId)
+                                }
+
+                                // 앵커가 3개 미만이면 좌표 삭제
+                                if (currentDistanceMap.size < 3) {
+                                    viewModel.setCurrentLocation(null)
+                                    coordinateText = "Coordinate: -"
+                                }
+                            }
+                        }
+
                         spaceUWB?.startUwbRtls(
                             anchorPositionMap = anchorPositionMap,
                             zCorrection = 1.0f,
                             maximumConnectionCount = 4,
-                            replacementDistanceThreshold = 8f,
+                            replacementDistanceThreshold = 50f,
                             isConnectStrongestSignalFirst = true,
                             filterType = RtlsFilterType.MOVING_AVERAGE,
                             onResult = { result ->
-                                coordinateText = String.format(
-                                    "Coordinate:\n  X: %.2f m\n  Y: %.2f m",
-                                    result.x,
-                                    result.y
-                                )
-                                viewModel.setCurrentLocation(Offset(result.x.toFloat(), result.y.toFloat()))
-                                statusText = "UWB Running..."
+                                // 앵커가 3개 이상일 때만 좌표 표시
+                                if (currentDistanceMap.size >= 3) {
+                                    coordinateText = String.format(
+                                        "Coordinate:\n  X: %.2f m\n  Y: %.2f m",
+                                        result.x,
+                                        result.y
+                                    )
+                                    viewModel.setCurrentLocation(Offset(result.x.toFloat(), result.y.toFloat()))
+                                    statusText = "UWB Running..."
 
-                                // MQTT: 실시간 좌표 전송
-                                mqttManager.publishCoordinate(
-                                    deviceId = deviceId,
-                                    x = result.x,
-                                    y = result.y
-                                )
+                                    // MQTT: 실시간 좌표 전송
+                                    mqttManager.publishCoordinate(
+                                        deviceId = deviceId,
+                                        x = result.x,
+                                        y = result.y
+                                    )
+                                }
                             },
                             onFail = { error ->
                                 Log.e("RTLS", "Failed: $error")
                                 statusText = "Error: $error"
                             },
                             onDeviceRanging = { distanceMap ->
-                                val distanceLines = distanceMap.map { (name, distance) ->
+                                val now = System.currentTimeMillis()
+
+                                // 각 앵커의 업데이트 시각 기록
+                                distanceMap.forEach { (anchorId, distance) ->
+                                    anchorLastUpdateTime[anchorId] = now
+                                    currentDistanceMap[anchorId] = distance
+                                }
+
+                                val distanceLines = currentDistanceMap.map { (name, distance) ->
                                     "  [$name] → ${String.format("%.2f", distance)}m"
                                 }.joinToString("\n")
                                 distanceText = "Distance:\n$distanceLines"
