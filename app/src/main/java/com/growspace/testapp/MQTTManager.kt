@@ -115,7 +115,7 @@ class MQTTManager(private val context: Context) {
     }
 
     // 좌표 데이터 전송
-    fun publishCoordinate(deviceId: String, x: Double, y: Double, accuracy: Double? = null) {
+    fun publishCoordinate(deviceId: String, x: Double, y: Double, anchorCount: Int, accuracy: Double? = null) {
         if (!isConnected) {
             Log.w(TAG, "MQTT not connected")
             return
@@ -126,7 +126,8 @@ class MQTTManager(private val context: Context) {
             "deviceId" to deviceId,
             "x" to x,
             "y" to y,
-            "timestamp" to timestamp
+            "timestamp" to timestamp,
+            "anchorCount" to anchorCount
         )
 
         // accuracy가 있으면 추가
