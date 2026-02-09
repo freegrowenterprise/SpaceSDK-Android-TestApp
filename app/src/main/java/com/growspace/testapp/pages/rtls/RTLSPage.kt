@@ -40,9 +40,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.navigation.NavHostController
 import com.growspace.sdk.SpaceUwb
 import com.growspace.sdk.rtls.filter.RtlsFilterType
@@ -52,6 +54,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
     val context = LocalContext.current
     val activity = context as? Activity
     val focusManager = LocalFocusManager.current
+    val haptic = LocalHapticFeedback.current
     val spaceUWB = remember(context, activity) {
         activity?.let { SpaceUwb(context, it) }
     }
@@ -115,6 +118,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 .fillMaxWidth()
                 .height(40.dp),
             onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 navController.navigate("uwbSetting")
             }
         ) {
@@ -150,6 +154,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
             )
 
             Button(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 val col = columnInput.toIntOrNull()?.coerceIn(1, 10) ?: columnCount
                 val row = rowInput.toIntOrNull()?.coerceIn(1, 10) ?: rowCount
                 columnCount = col
@@ -232,12 +237,14 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                     .padding(vertical = 8.dp),
                 enabled = !isLoading.value,
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     spaceUWB?.stopUwbRanging()
                 }) {
                 Text("Stop")
             }
             Button(
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     if (hasNoCoordinates) {
                         Toast.makeText(context, "Please set the location of UWB equipment first.", Toast.LENGTH_SHORT).show()
                     } else {

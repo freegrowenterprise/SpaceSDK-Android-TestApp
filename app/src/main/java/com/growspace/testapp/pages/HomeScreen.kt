@@ -14,12 +14,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.compose.ui.Modifier
 
 @Composable
 fun HomeScreen(navController: NavHostController) {
+    val haptic = LocalHapticFeedback.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -34,7 +37,10 @@ fun HomeScreen(navController: NavHostController) {
         )
         Spacer(modifier = Modifier.height(40.dp))
         Button(
-            onClick = { navController.navigate("check") },
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                navController.navigate("check")
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
@@ -44,7 +50,10 @@ fun HomeScreen(navController: NavHostController) {
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(
-            onClick = { navController.navigate("ranging") },
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                navController.navigate("ranging")
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
@@ -55,7 +64,10 @@ fun HomeScreen(navController: NavHostController) {
         }
         Spacer(modifier = Modifier.height(20.dp))
         Button(
-            onClick = { navController.navigate("rtls") },
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                navController.navigate("rtls")
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),

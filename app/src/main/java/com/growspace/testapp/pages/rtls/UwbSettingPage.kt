@@ -18,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -43,6 +45,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
     val context = LocalContext.current
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     val focusManager = LocalFocusManager.current
+    val haptic = LocalHapticFeedback.current
     val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     val bluetoothAdapter = bluetoothManager.adapter
     val scanner = bluetoothAdapter.bluetoothLeScanner
@@ -147,7 +150,10 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
-                onClick = { stopScan() },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    stopScan()
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
                 modifier = Modifier.weight(1f)
             ) {
@@ -156,6 +162,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
 
             Button(
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     devices.clear()
                     startScan()
                 },
@@ -231,6 +238,7 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
 
         Button(
             onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 coordinates.forEach { (name, coord) ->
                     viewModel.setCoordinate(name, coord.x, coord.y)
                     Log.d("SAVE", "[$name] -> X=${coord.x}, Y=${coord.y}")

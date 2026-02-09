@@ -26,8 +26,10 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
@@ -48,6 +50,7 @@ fun RangingPage() {
     val context = LocalContext.current as ComponentActivity
     val spaceUWB = remember { SpaceUwb(context, context) }
     val focusManager = LocalFocusManager.current
+    val haptic = LocalHapticFeedback.current
 
     val currentMaxConnectCount = remember { mutableIntStateOf(4) }
     val deviceInfoList = remember { mutableStateListOf<DeviceInfo>() }
@@ -315,7 +318,10 @@ fun RangingPage() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = { stopUwbScan() },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        stopUwbScan()
+                    },
                     modifier = Modifier.weight(1f),
                     enabled = !isButtonLoading.value && isScanning.value
                 ) {
@@ -330,7 +336,10 @@ fun RangingPage() {
                     }
                 }
                 Button(
-                    onClick = { startUwbScan() },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        startUwbScan()
+                    },
                     modifier = Modifier.weight(1f),
                     enabled = !isButtonLoading.value && !isScanning.value
                 ) {
