@@ -11,8 +11,8 @@ android {
         applicationId = "com.growspace.testapp"
         minSdk = 34
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.0.8"
+        versionCode = 14
+        versionName = "1.0.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
