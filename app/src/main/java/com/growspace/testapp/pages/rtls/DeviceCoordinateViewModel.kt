@@ -90,7 +90,9 @@ class DeviceCoordinateViewModel : ViewModel() {
     var currentRtlsLocation by mutableStateOf<Offset?>(null)
         private set
 
-    fun setCurrentLocation(offset: Offset) {
+    var isRtlsRunning by mutableStateOf(false)
+
+    fun setCurrentLocation(offset: Offset?) {
         currentRtlsLocation = offset
     }
 

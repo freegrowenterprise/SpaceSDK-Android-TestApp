@@ -234,14 +234,34 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
         ) {
             Button(
                 modifier = Modifier
-                    .padding(vertical = 8.dp),
-                enabled = !isLoading.value,
+                    .padding(vertical = 8.dp)
+                    .weight(1f),
+                enabled = viewModel.isRtlsRunning,
+                colors = if (viewModel.isRtlsRunning) {
+                    ButtonDefaults.buttonColors()
+                } else {
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color.LightGray,
+                        contentColor = Color.Gray
+                    )
+                },
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    spaceUWB?.stopUwbRanging()
+                    Log.d("RTLS", "Stop 버튼 클릭")
+                    viewModel.isRtlsRunning = false
+                    isLoading.value = false
+                    viewModel.setCurrentLocation(null)
+                    viewModel.updateAnchorDistances(emptyMap())
+                    spaceUWB?.stopUwbRanging(
+                        onComplete = { result ->
+                            Log.d("RTLS", "stopUwbRanging 완료: $result")
+                        },
+                        delayDisconnectSecLimit = 0
+                    )
                 }) {
                 Text("Stop")
             }
+            Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -249,6 +269,8 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                         Toast.makeText(context, "Please set the location of UWB equipment first.", Toast.LENGTH_SHORT).show()
                     } else {
                         isLoading.value = true
+                        viewModel.isRtlsRunning = true
+                        Log.d("RTLS", "Start RTLS clicked - isRtlsRunning: ${viewModel.isRtlsRunning}")
 
                         val anchorPositionMap = viewModel.deviceCoordinates
                             .filterKeys { it.startsWith("FGU-") }
@@ -267,7 +289,9 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                             isConnectStrongestSignalFirst = true,
                             filterType = RtlsFilterType.MOVING_AVERAGE,
                             onResult = { result ->
-                                Log.d("RTLS", "결과 위치: ${result.x}, ${result.y}, ${result.z}")
+                                Log.d("RTLS", "onResult - 결과 위치: ${result.x}, ${result.y}, ${result.z}, isRtlsRunning: ${viewModel.isRtlsRunning}")
+                                // Stop 이후 콜백이 오면 무시
+                                if (!viewModel.isRtlsRunning) return@startUwbRtls
 
                                 val x = result.x.toFloat()
                                 val y = result.y.toFloat()
@@ -276,11 +300,15 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                                 isLoading.value = false
                             },
                             onFail = { error ->
-                                Log.e("RTLS", "실패: $error")
+                                Log.e("RTLS", "onFail - 실패: $error, isRtlsRunning: ${viewModel.isRtlsRunning}")
+                                // Stop 이후 콜백이 오면 무시
+                                if (!viewModel.isRtlsRunning) return@startUwbRtls
                                 isLoading.value = false
                             },
                             onDeviceRanging = { distanceMap ->
-                                Log.d("RTLS", "장치 거리: $distanceMap")
+                                Log.d("RTLS", "onDeviceRanging - 장치 거리: $distanceMap, isRtlsRunning: ${viewModel.isRtlsRunning}")
+                                // Stop 이후 콜백이 오면 무시
+                                if (!viewModel.isRtlsRunning) return@startUwbRtls
                                 viewModel.updateAnchorDistances(distanceMap)
                                 isLoading.value = false
                             }
@@ -288,10 +316,14 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                     }
                 },
                 modifier = Modifier
-                    .padding(vertical = 8.dp),
-                enabled = !isLoading.value && !hasNoCoordinates,
-                colors = if (hasNoCoordinates || isLoading.value) {
-                    ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                    .padding(vertical = 8.dp)
+                    .weight(1f),
+                enabled = !viewModel.isRtlsRunning && !hasNoCoordinates,
+                colors = if (viewModel.isRtlsRunning || hasNoCoordinates) {
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color.LightGray,
+                        contentColor = Color.Gray
+                    )
                 } else {
                     ButtonDefaults.buttonColors()
                 }
