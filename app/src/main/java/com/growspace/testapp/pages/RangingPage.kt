@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
@@ -45,6 +47,7 @@ import kotlin.random.Random
 fun RangingPage() {
     val context = LocalContext.current as ComponentActivity
     val spaceUWB = remember { SpaceUwb(context, context) }
+    val focusManager = LocalFocusManager.current
 
     val currentMaxConnectCount = remember { mutableIntStateOf(4) }
     val deviceInfoList = remember { mutableStateListOf<DeviceInfo>() }
@@ -205,6 +208,11 @@ fun RangingPage() {
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Text(

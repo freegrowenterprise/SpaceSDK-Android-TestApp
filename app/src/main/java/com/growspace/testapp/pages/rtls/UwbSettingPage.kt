@@ -16,7 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -39,6 +42,7 @@ import kotlinx.coroutines.launch
 fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
     val context = LocalContext.current
     val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    val focusManager = LocalFocusManager.current
     val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     val bluetoothAdapter = bluetoothManager.adapter
     val scanner = bluetoothAdapter.bluetoothLeScanner
@@ -73,9 +77,9 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                     if (deviceName.startsWith("FGU-") &&
                         devices.none { d -> d.device.address == it.device.address }) {
                         devices.add(it)
-                        viewModel.deviceCoordinates[deviceName]?.let { coord ->
-                            coordinates[deviceName] = coord
-                        }
+                        // 저장된 좌표가 있으면 불러오고, 없으면 0,0으로 초기화
+                        val savedCoord = viewModel.deviceCoordinates[deviceName]
+                        coordinates[deviceName] = savedCoord ?: Offset(0f, 0f)
                     }
                 }
             }
@@ -131,6 +135,11 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            }
     ) {
         Text("BLE Scan Page")
 
@@ -226,6 +235,8 @@ fun UwbSettingPage(viewModel: DeviceCoordinateViewModel) {
                     viewModel.setCoordinate(name, coord.x, coord.y)
                     Log.d("SAVE", "[$name] -> X=${coord.x}, Y=${coord.y}")
                 }
+                // SharedPreferences에 영구 저장
+                viewModel.saveAllCoordinates()
 
                 Toast.makeText(context, "Save complete", Toast.LENGTH_SHORT).show()
                 backDispatcher?.onBackPressed()

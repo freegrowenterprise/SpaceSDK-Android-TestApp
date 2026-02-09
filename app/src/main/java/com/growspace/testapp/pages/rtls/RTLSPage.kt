@@ -38,8 +38,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.navigation.NavHostController
 import com.growspace.sdk.SpaceUwb
 import com.growspace.sdk.rtls.filter.RtlsFilterType
@@ -48,15 +51,25 @@ import com.growspace.sdk.rtls.filter.RtlsFilterType
 fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewModel) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val focusManager = LocalFocusManager.current
     val spaceUWB = remember(context, activity) {
         activity?.let { SpaceUwb(context, it) }
     }
 
-    var rowInput by remember { mutableStateOf("5") }
-    var columnInput by remember { mutableStateOf("5") }
+    // ViewModel에서 저장된 그리드 크기 불러오기
+    var columnInput by remember { mutableStateOf(viewModel.gridWidth.toString()) }
+    var rowInput by remember { mutableStateOf(viewModel.gridHeight.toString()) }
 
-    var rowCount by remember { mutableStateOf(5) }
-    var columnCount by remember { mutableStateOf(5) }
+    var columnCount by remember { mutableStateOf(viewModel.gridWidth) }
+    var rowCount by remember { mutableStateOf(viewModel.gridHeight) }
+
+    // ViewModel 값이 변경되면 UI 업데이트
+    LaunchedEffect(viewModel.gridWidth, viewModel.gridHeight) {
+        columnCount = viewModel.gridWidth
+        rowCount = viewModel.gridHeight
+        columnInput = viewModel.gridWidth.toString()
+        rowInput = viewModel.gridHeight.toString()
+    }
 
     val showGrid = remember { mutableStateOf(true) }
 
@@ -86,6 +99,11 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                })
+            }
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -110,6 +128,18 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedTextField(
+                value = columnInput,
+                onValueChange = {
+                    if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 10) columnInput = it
+                },
+                label = { Text("horizontal (max 10)") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+
+            Text(text = "X", style = MaterialTheme.typography.bodyLarge)
+
+            OutlinedTextField(
                 value = rowInput,
                 onValueChange = {
                     if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 10) rowInput = it
@@ -119,23 +149,13 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
                 singleLine = true
             )
 
-            Text(text = "X", style = MaterialTheme.typography.bodyLarge)
-
-            OutlinedTextField(
-                value = columnInput,
-                onValueChange = {
-                    if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 10) columnInput = it
-                },
-                label = { Text("horiziontal (max 10)") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-
             Button(onClick = {
-                val row = rowInput.toIntOrNull()?.coerceIn(1, 10) ?: rowCount
                 val col = columnInput.toIntOrNull()?.coerceIn(1, 10) ?: columnCount
-                rowCount = row
+                val row = rowInput.toIntOrNull()?.coerceIn(1, 10) ?: rowCount
                 columnCount = col
+                rowCount = row
+                // ViewModel에 저장
+                viewModel.setGridSize(col, row)
                 showGrid.value = true
             }) {
                 Text("Set")
@@ -149,7 +169,7 @@ fun RTLSPage(navController: NavHostController, viewModel: DeviceCoordinateViewMo
             horizontalArrangement = Arrangement.Start
         ) {
             Text(
-                "Above left (0, 0)   Unit : m",
+                "Bottom left (0, 0)   Unit : m",
                 style = MaterialTheme.typography.bodyLarge,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -314,7 +334,8 @@ fun GridWithDots(
 
                 points.forEach { (name, point) ->
                     val x = point.y * cellSizePx
-                    val y = point.x * cellSizePx
+                    // Y축 반전: 왼쪽 아래가 (0,0)이 되도록
+                    val y = (rowCount - point.x) * cellSizePx
 
                     drawCircle(
                         color = Color.Red,
