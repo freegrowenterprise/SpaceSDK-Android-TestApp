@@ -1,43 +1,50 @@
 package com.growspace.testapp.pages
 
 import android.Manifest
-import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import androidx.compose.material3.ExposedDropdownMenuBox
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import com.growspace.sdk.SpaceUwb
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import com.growspace.sdk.model.DisconnectType
 import com.growspace.testapp.model.DeviceInfo
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -45,26 +52,56 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
+/// 사유에 따라 색깔 분기되는 Snackbar visuals
+private data class ColoredSnackbarVisuals(
+    override val message: String,
+    val containerColor: Color,
+    override val actionLabel: String? = null,
+    override val withDismissAction: Boolean = false,
+    override val duration: SnackbarDuration = SnackbarDuration.Short,
+) : SnackbarVisuals
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun RangingPage() {
+fun RangingPage(navController: NavHostController? = null) {
     val context = LocalContext.current as ComponentActivity
-    val spaceUWB = remember { SpaceUwb(context, context) }
+    val sessionViewModel: RangingSessionViewModel = viewModel()
+    val spaceUWB = sessionViewModel.getSpaceUwb(context, context)
     val focusManager = LocalFocusManager.current
     val haptic = LocalHapticFeedback.current
-
-    val currentMaxConnectCount = remember { mutableIntStateOf(4) }
-    val deviceInfoList = remember { mutableStateListOf<DeviceInfo>() }
-    val showLoading = remember { mutableStateOf(false) }
-    val isScanning = remember { mutableStateOf(false) }
-    val isDemoMode = remember { mutableStateOf(false) }
-//    val showDemoDialog = remember { mutableStateOf(false) }
-    val distanceLimit = remember { mutableFloatStateOf(80.0f) }
-    val signalPriority = remember { mutableStateOf(true) }
-    val notificationTimer = remember { mutableStateOf<Job?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    val delayDisconnectSecLimit = remember { mutableIntStateOf(5) }
-    val showErrorDialog = remember { mutableStateOf(false) }
-    val isButtonLoading = remember { mutableStateOf(false) }
+
+    val currentMaxConnectCount = sessionViewModel.currentMaxConnectCount
+    val deviceInfoList = sessionViewModel.deviceInfoList
+    val showLoading = sessionViewModel.showLoading
+    val isScanning = sessionViewModel.isScanning
+    val isDemoMode = sessionViewModel.isDemoMode
+    val distanceLimit = sessionViewModel.distanceLimit
+    val signalPriority = sessionViewModel.signalPriority
+    val notificationTimer = remember { mutableStateOf<Job?>(null) }
+    val delayDisconnectSecLimit = sessionViewModel.delayDisconnectSecLimit
+    val showErrorDialog = sessionViewModel.showErrorDialog
+    val isButtonLoading = sessionViewModel.isButtonLoading
+    val isAzimuthSupported = sessionViewModel.isAzimuthSupported
+    val isDistanceSupported = sessionViewModel.isDistanceSupported
+    val isElevationSupported = sessionViewModel.isElevationSupported
+
+    LaunchedEffect(Unit) {
+        if (isAzimuthSupported.value != null) return@LaunchedEffect
+        try {
+            spaceUWB.checkAzimuthElevationSupport { azimuth, distance, elevation, _, _, _ ->
+                isAzimuthSupported.value = azimuth
+                isDistanceSupported.value = distance
+                isElevationSupported.value = elevation
+            }
+        } catch (e: Exception) {
+            Log.w("RangingPage", "checkAzimuthElevationSupport failed", e)
+        }
+    }
+
+    // 카드 long-press → BottomSheet 대상
+    val deviceActionTarget = remember { mutableStateOf<String?>(null) }
 
     fun updateDemoDevices() {
         if (deviceInfoList.isEmpty()) {
@@ -91,9 +128,27 @@ fun RangingPage() {
         }
     }
 
+    fun showDisconnectSnackbar(name: String, type: DisconnectType) {
+        val (msg, color) = when (type) {
+            DisconnectType.DISCONNECTED_DUE_TO_DISTANCE ->
+                "$name — 거리 초과로 연결 해제" to Color(0xFF1976D2)
+            DisconnectType.DISCONNECTED_DUE_TO_SYSTEM ->
+                "$name — 시스템 종료로 연결 해제" to Color(0xFF616161)
+            DisconnectType.DISCONNECTED_DUE_TO_TIMEOUT ->
+                "$name — 응답 끊김 (timeout)" to Color(0xFFC62828)
+            DisconnectType.DISCONNECTED_DUE_TO_NO_DATA ->
+                "$name — UWB 데이터 미수신 (회귀 가능성)" to Color(0xFFE65100)
+        }
+        coroutineScope.launch {
+            snackbarHostState.showSnackbar(
+                ColoredSnackbarVisuals(message = msg, containerColor = color)
+            )
+        }
+    }
+
     fun startUwbScan() {
         isButtonLoading.value = true
-        
+
         val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val bluetoothAdapter = bluetoothManager?.adapter
 
@@ -123,10 +178,19 @@ fun RangingPage() {
         isScanning.value = true
         isDemoMode.value = false
 
+        sessionViewModel.sessionDisconnectedDeviceNames.forEach { disconnectedName ->
+            spaceUWB.disconnectDevice(disconnectedName)
+        }
+
         spaceUWB.startUwbRanging(
-            onUpdate = { result ->
+            onUpdate = onUpdate@{ result ->
                 showLoading.value = false
                 isButtonLoading.value = false
+                if (sessionViewModel.isSessionDisconnected(result.deviceName)) {
+                    deviceInfoList.removeIf { it.name == result.deviceName }
+                    spaceUWB.disconnectDevice(result.deviceName)
+                    return@onUpdate
+                }
                 val device = DeviceInfo(
                     name = result.deviceName,
                     distance = result.distance,
@@ -138,6 +202,7 @@ fun RangingPage() {
             },
             onDisconnect = { result ->
                 deviceInfoList.removeIf { it.name == result.deviceName }
+                showDisconnectSnackbar(result.deviceName, result.disConnectType)
             },
             maximumConnectionCount = currentMaxConnectCount.intValue,
             replacementDistanceThreshold = distanceLimit.floatValue,
@@ -157,8 +222,8 @@ fun RangingPage() {
         isScanning.value = false
         isDemoMode.value = false
         showLoading.value = false
-        spaceUWB.stopUwbRanging (
-            onComplete = { result ->
+        spaceUWB.stopUwbRanging(
+            onComplete = { _ ->
                 isButtonLoading.value = false
             },
             delayDisconnectSecLimit = delayDisconnectSecLimit.intValue
@@ -181,13 +246,6 @@ fun RangingPage() {
         notificationTimer.value = null
     }
 
-//    LaunchedEffect(showLoading.value, isScanning.value) {
-//        if (showLoading.value && isScanning.value) {
-//            delay(10000)
-//            if (deviceInfoList.isEmpty()) showDemoDialog.value = true
-//        }
-//    }
-
     LaunchedEffect(isDemoMode.value) {
         while (isDemoMode.value) {
             delay(1000)
@@ -199,197 +257,283 @@ fun RangingPage() {
         if (isScanning.value) startNotificationTimer() else stopNotificationTimer()
     }
 
-//    LaunchedEffect(deviceInfoList.size) {
-//        if (showDemoDialog.value && deviceInfoList.isNotEmpty()) {
-//            showDemoDialog.value = false
-//            isDemoMode.value = false
-//            showLoading.value = false
-//        }
-//    }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = {
-                    focusManager.clearFocus()
-                })
-            }
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Text(
-                "Space UWB Scanner",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-            Spacer(Modifier.height(16.dp))
-
-            MaxConnectionSelector(
-                maxConnectCount = currentMaxConnectCount.value,
-                onValueChange = { newValue ->
-                    currentMaxConnectCount.value = newValue
-                }
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            DelayInputField(delayDisconnectSecLimit)
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "maximum connection distance (m)",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    )
-
-                OutlinedTextField(
-                    value = distanceLimit.value.toString(),
-                    onValueChange = {
-                        distanceLimit.value = it.toFloatOrNull() ?: distanceLimit.value
-                    },
-                    modifier = Modifier.width(100.dp),
-                    singleLine = true
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                val containerColor = (data.visuals as? ColoredSnackbarVisuals)?.containerColor
+                    ?: SnackbarDefaults.color
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = containerColor,
+                    contentColor = Color.White
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("RSSI Priority Connection Settings", style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.weight(1f))
-                Switch(
-                    checked = signalPriority.value,
-                    onCheckedChange = { signalPriority.value = it })
-            }
-            Text(
-                text = "Attempt to connect UWB devices with the largest RSSI sequentially.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-
-            Spacer(Modifier.height(16.dp))
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                if (showLoading.value) {
-                    Column(
-                        Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(16.dp))
-                        Text("Searching for devices...")
+        },
+        topBar = {
+            TopAppBar(
+                title = { Text("Space UWB Scanner") },
+                actions = {
+                    if (navController != null) {
+                        IconButton(onClick = { navController.navigate("blocklist") }) {
+                            Icon(Icons.Default.Block, contentDescription = "BlockList")
+                        }
+                        IconButton(onClick = { navController.navigate("check") }) {
+                            Icon(Icons.Default.Info, contentDescription = "Capability info")
+                        }
                     }
-                } else if (deviceInfoList.isNotEmpty()) {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        deviceInfoList.forEach { device ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text("Device: ${device.name}")
-                                    Text("distance: ${"%.2f".format(device.distance)}m")
-                                    Text("azimuth: ${device.azimuth}°, elevation: ${device.elevation}°")
+                }
+            )
+        }
+    ) { paddings ->
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddings)
+                .padding(16.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                    })
+                }
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                CapabilityBadge(
+                    isAzimuthSupported = isAzimuthSupported.value,
+                    isDistanceSupported = isDistanceSupported.value,
+                    isElevationSupported = isElevationSupported.value
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                MaxConnectionSelector(
+                    maxConnectCount = currentMaxConnectCount.value,
+                    onValueChange = { newValue ->
+                        currentMaxConnectCount.value = newValue
+                    }
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                DelayInputField(delayDisconnectSecLimit)
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "maximum connection distance (m)",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    OutlinedTextField(
+                        value = distanceLimit.value.toString(),
+                        onValueChange = {
+                            distanceLimit.value = it.toFloatOrNull() ?: distanceLimit.value
+                        },
+                        modifier = Modifier.width(100.dp),
+                        singleLine = true
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("RSSI Priority Connection Settings", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(Modifier.weight(1f))
+                    Switch(
+                        checked = signalPriority.value,
+                        onCheckedChange = { signalPriority.value = it })
+                }
+                Text(
+                    text = "Attempt to connect UWB devices with the largest RSSI sequentially.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    if (showLoading.value) {
+                        Column(
+                            Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator()
+                            Spacer(Modifier.height(16.dp))
+                            Text("Searching for devices...")
+                        }
+                    } else if (deviceInfoList.isNotEmpty()) {
+                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                            deviceInfoList.forEach { device ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .combinedClickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = { /* no-op */ },
+                                            onLongClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                deviceActionTarget.value = device.name
+                                            }
+                                        )
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            "Device: ${device.name}",
+                                            style = MaterialTheme.typography.titleSmall
+                                        )
+                                        Text("distance: ${"%.2f".format(device.distance)}m")
+                                        Text("azimuth: ${device.azimuth}°, elevation: ${device.elevation}°")
+                                        Text(
+                                            text = "길게 눌러 단일 끊기 / 차단",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("The device was not detected.")
+                    } else {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("The device was not detected.", color = Color.Gray)
+                        }
                     }
                 }
-            }
-            Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        stopUwbScan()
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isButtonLoading.value && isScanning.value
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (isButtonLoading.value && !isScanning.value) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Stop")
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            stopUwbScan()
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isButtonLoading.value && isScanning.value
+                    ) {
+                        if (isButtonLoading.value && !isScanning.value) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Stop")
+                        }
                     }
-                }
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        startUwbScan()
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isButtonLoading.value && !isScanning.value
-                ) {
-                    if (isButtonLoading.value && isScanning.value) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Start")
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            startUwbScan()
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isButtonLoading.value && !isScanning.value
+                    ) {
+                        if (isButtonLoading.value && isScanning.value) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Start")
+                        }
                     }
                 }
             }
         }
     }
 
-//    if (showDemoDialog.value) {
-//        AlertDialog(
-//            onDismissRequest = {
-//                showDemoDialog.value = false
-//                showLoading.value = false
-//            },
-//            title = { Text("Run Experience Mode") },
-//            text = {
-//                Text(
-//                    buildAnnotatedString {
-//                        append("Device connection was not detected. Do you want to run the experience version?\n\n")
-//                        withStyle(style = SpanStyle(color = Color.Gray)) {
-//                            append("Don't close the window to continue trying to connect.")
-//                        }
-//                    }
-//                )
-//            },
-//            confirmButton = {
-//                Button(onClick = {
-//                    isDemoMode.value = true
-//                    showDemoDialog.value = false
-//                    showLoading.value = false
-//                }) { Text("Ok") }
-//            },
-//            dismissButton = {
-//                Button(onClick = {
-//                    showDemoDialog.value = false
-//                    showLoading.value = false
-//                    isScanning.value = false
-//                }) { Text("Cancel") }
-//            }
-//        )
-//    }
+    // 디바이스 long-press → ModalBottomSheet (Material3 표준 패턴)
+    val target = deviceActionTarget.value
+    if (target != null) {
+        val sheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(
+            onDismissRequest = { deviceActionTarget.value = null },
+            sheetState = sheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = target,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "디바이스 액션을 선택하세요",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(Modifier.height(12.dp))
+
+                ListItem(
+                    headlineContent = { Text("이 디바이스만 끊기") },
+                    supportingContent = {
+                        Text(
+                            "현재 페이지 세션 동안 재연결 시 계속 끊음",
+                            color = Color.Gray
+                        )
+                    },
+                    leadingContent = {
+                        Icon(Icons.Default.LinkOff, contentDescription = null)
+                    },
+                    modifier = Modifier.clickable {
+                        sessionViewModel.markSessionDisconnected(target)
+                        deviceInfoList.removeIf { it.name == target }
+                        spaceUWB.disconnectDevice(target)
+                        deviceActionTarget.value = null
+                    }
+                )
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = "이 디바이스 차단 (영구)",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            "unblock 호출 전까지 자동 재연결 차단",
+                            color = Color.Gray
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    modifier = Modifier.clickable {
+                        spaceUWB.blockDevice(target)
+                        deviceActionTarget.value = null
+                    }
+                )
+
+                Spacer(Modifier.height(12.dp))
+                TextButton(
+                    onClick = { deviceActionTarget.value = null },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("취소") }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
 
     if (showErrorDialog.value) {
         AlertDialog(
@@ -409,14 +553,51 @@ fun RangingPage() {
             }
         )
     }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            stopUwbScan()
-        }
-    }
 }
 
+@Composable
+private fun CapabilityBadge(
+    isAzimuthSupported: Boolean?,
+    isDistanceSupported: Boolean?,
+    isElevationSupported: Boolean?,
+) {
+    val text: String
+    val container: Color
+    val onContainer: Color
+
+    when {
+        isAzimuthSupported == null -> {
+            text = "이 폰의 UWB capability 조회 중…"
+            container = Color(0xFFEFEFEF)
+            onContainer = Color.DarkGray
+        }
+        isAzimuthSupported == true -> {
+            text = "이 폰: direction OK (azimuth=true, distance=$isDistanceSupported, elevation=$isElevationSupported)"
+            container = Color(0xFFE7F5EC)
+            onContainer = Color(0xFF1B5E20)
+        }
+        else -> {
+            text = "이 폰: direction 미지원 (distance only)"
+            container = Color(0xFFFFF3E0)
+            onContainer = Color(0xFFE65100)
+        }
+    }
+
+    Surface(
+        color = container,
+        contentColor = onContainer,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -488,7 +669,7 @@ fun DelayInputField(delayDisconnectSecLimit: MutableState<Int>) {
             modifier = Modifier.weight(1f),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
-            )
+        )
 
         Column {
             IconButton(
@@ -538,8 +719,3 @@ fun DelayInputField(delayDisconnectSecLimit: MutableState<Int>) {
         )
     }
 }
-
-//addToStrictGattMap() Too many register gatt interface
-//onClientRegistered() - status=133 clientIf=0
-//BluetoothGatt not initialized or uninitialized characteristic
-//UWB ranging notification received for unexpected device address

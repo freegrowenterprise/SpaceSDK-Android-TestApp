@@ -26,9 +26,10 @@ fun AppNavHost() {
 
     NavHost(navController, startDestination = "home") {
         composable("home") { HomeScreen(navController) }
-        composable("ranging") { RangingPage() }
+        composable("ranging") { RangingPage(navController) }
         composable("rtls") { RTLSPage(navController, viewModel = viewModel) }
         composable("uwbSetting") { UwbSettingPage(viewModel = viewModel) }
         composable("check") { CheckAzimuthElevationPage() }
+        composable("blocklist") { BlockListPage() }
     }
 }

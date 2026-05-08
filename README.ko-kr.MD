@@ -46,6 +46,10 @@ git clone https://github.com/freegrowenterprise/SpaceSDK-Android-TestApp.git
 
 https://github.com/user-attachments/assets/0a675881-3c08-4009-978a-acaaafa0b76d
 
+#### 🚫 개별 디바이스 끊기 / 차단 (SDK 0.0.12+)
+- Ranging 페이지에서 디바이스 카드를 길게 누르면 **이 디바이스만 끊기 (현재 세션)** 와 **영구 차단** 중 선택할 수 있습니다. 단일 끊기는 같은 페이지를 떠나기 전까지 재연결을 막고, 차단은 SharedPreferences 에 저장되어 앱 재시작 후에도 유지됩니다.
+- 별도의 **차단 목록** 페이지에서 차단된 디바이스를 확인하고 언블록할 수 있습니다. 차단 목록 페이지로 이동했다가 돌아와도 Ranging 세션이 유지되어 스캔이 끊기지 않습니다.
+
 
 
 #### 🧭 RTLS 격자 기반 위치 표시 기능

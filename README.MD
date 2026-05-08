@@ -47,6 +47,10 @@ git clone https://github.com/freegrowenterprise/SpaceSDK-Android-TestApp.git
 
 https://github.com/user-attachments/assets/0a675881-3c08-4009-978a-acaaafa0b76d
 
+#### 🚫 Per-Device Disconnect & Block (SDK 0.0.12+)
+- Long-press any device card on the ranging page to choose between **session-only disconnect** (auto-reconnect blocked until you leave the page) and **permanent block** (persisted to disk, applied across app restarts).
+- A dedicated **Block List** page lets you review and unblock previously blocked devices. Navigating into and out of this page preserves the ranging session — scanning is no longer interrupted by side trips.
+
 
 
 #### 🧭 RTLS Grid-Based Location Visualization
